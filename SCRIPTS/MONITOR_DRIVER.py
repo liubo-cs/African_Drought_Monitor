@@ -117,7 +117,8 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  os.system("sed -i 's/tdef 2/tdef 4/g' %s/%s" % (workspace,ctl_file))
 
  #Create index file
- os.system('gribmap -0 -i %s/%s' % (workspace,ctl_file))
+ gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+ os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
  
  #Open access to the file
  ga("open %s/%s" % (workspace,ctl_file))
@@ -257,7 +258,8 @@ connection_info['NCEP_FNL']['password'] = data['password']
 connection_info['NCEP_FNL']['username'] = data['username']
 
 #Open connection to grads through pygrads
-ga = grads.GrADS(Bin='grads',Window=False,Echo=False)
+grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
+ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
 
 #Download and process the gfs analysis data
 Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
