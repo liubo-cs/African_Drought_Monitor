@@ -1,4 +1,8 @@
 Required Software and Libraries
-
-wgrib2
-g2ctl
+python libraries
+- numpy
+- fileinput
+- netCDF4
+other
+wgrib
+grib2ctl

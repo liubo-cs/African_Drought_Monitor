@@ -14,8 +14,6 @@ import numpy as np
 import fileinput
 import netCDF4 as netcdf
 
-#import matplotlib.pyplot as plt
-
 def Create_NETCDF_File(dims,file,vars,vars_info,tinitial,tstep,nt):
 
  nlat = dims['nlat']
@@ -195,10 +193,13 @@ dims['nlon'] = 1440
 dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
+
+#Load connection info (usernames and passwords)
+data = np.loadtxt('CONNECTION_INFO.txt',skiprows=1,dtype={'names': ('domain','username','password'), 'formats': ('S100','S100','S100')})
 connection_info = {}
 connection_info['NCEP_FNL'] = {}
-connection_info['NCEP_FNL']['password'] = 'ZlWBqFNK'
-connection_info['NCEP_FNL']['username'] = 'chaneyna@gmail.com'
+connection_info['NCEP_FNL']['password'] = data['password']
+connection_info['NCEP_FNL']['username'] = data['username']
 
 #Open connection to grads through pygrads
 ga = grads.GrADS(Bin='grads',Window=False,Echo=False)
