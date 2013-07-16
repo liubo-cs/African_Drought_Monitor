@@ -12,8 +12,56 @@ import os
 import grads
 import numpy as np
 import fileinput
+import netCDF4 as netcdf
 
 #import matplotlib.pyplot as plt
+
+def Create_NETCDF_File(dims,file,vars,vars_info,tinitial,tstep,nt):
+
+ nlat = dims['nlat']
+ nlon = dims['nlon']
+ res = dims['res']
+ minlon = dims['minlon']
+ minlat = dims['minlat']
+ t = np.arange(0,nt)
+
+ #Prepare the netcdf file
+ #Create file
+ f = netcdf.Dataset(file, 'w')
+
+ #Define dimensions
+ f.createDimension('lon',nlon)
+ f.createDimension('lat',nlat)
+ f.createDimension('t',len(t))
+
+ #Longitude
+ f.createVariable('lon','d',('lon',))
+ f.variables['lon'][:] = np.linspace(minlon,minlon+res*(nlon-1),nlon)
+ f.variables['lon'].units = 'degrees_east'
+ f.variables['lon'].long_name = 'Longitude'
+ f.variables['lon'].res = res
+
+ #Latitude
+ f.createVariable('lat','d',('lat',))
+ f.variables['lat'][:] = np.linspace(minlat,minlat+res*(nlat-1),nlat)
+ f.variables['lat'].units = 'degrees_north'
+ f.variables['lat'].long_name = 'Latitude'
+ f.variables['lat'].res = res
+
+ #Time
+ times = f.createVariable('t','d',('t',))
+ f.variables['t'][:] = t
+ f.variables['t'].units = '%s since %04d-%02d-%02d %02d:00:00.0' % (tstep,tinitial.year,tinitial.month,tinitial.day,tinitial.hour)
+ f.variables['t'].long_name = 'Time'
+
+ #Data
+ i = 0
+ for var in vars:
+  f.createVariable(var,'f',('t','lat','lon'),fill_value=-9.99e+08)
+  f.variables[var].long_name = vars_info[i]
+  i = i + 1
+
+ return f
 
 def Grads_Regrid(var_in,var_out,dims):
 
@@ -44,12 +92,17 @@ def Download_NCEP_FNL_Analysis(date,root):
  if os.path.isfile('%s/%s' % (root,grb_file)) == False:
   os.system("%s%s" % (dwncmd,grb_file))
 
-def Download_and_Process_NCEP_FNL_Analysis(date,dims):
+def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
 
  workspace = '../WORKSPACE'
  fnl_analysis_root = '../DATA/FNL_ANALYSIS'
  dt = datetime.timedelta(hours=6)
  idate = date
+
+ #Initialize connection for FNL analysis
+ pswd = connection_info['NCEP_FNL']['password']
+ user = connection_info['NCEP_FNL']['username']
+ Initialize_NCEP_FNL_Connection(user,pswd)
 
  #Download date of NCEP Final Analysis (http://rda.ucar.edu/datasets/ds083.2/)
  for i in xrange(0,4):
@@ -77,22 +130,41 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims):
  ga("prec = 3600*24*sum(pratesfc,t=1,t=4)/4")
  ga("wind = pow(pow(UGRD10m,2) + pow(VGRD10m,2),0.5)")
 
+ #Set to new region
+ ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+ ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+
  #Regrid to 1/4 degree
  Grads_Regrid("tmax","tmax",dims)
  Grads_Regrid("tmin","tmin",dims)
  Grads_Regrid("prec","prec",dims)
  Grads_Regrid("wind","wind",dims)
 
- #Save to netcdf file
- netcdf_file = 'fnlanl_%04d%02d%02d_006_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
- ga("set sdfwrite -flt -zip %s/%s" % (fnl_analysis_root,netcdf_file))
- ga("sdfwrite prec")
- ga("sdfwrite tmax")
- ga("sdfwrite tmin")
- ga("sdfwrite wind")
+ #Create and open access to netcdf file
+ netcdf_file = 'fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ file = '%s/%s' % (fnl_analysis_root,netcdf_file)
+ vars = ['tmax','tmin','prec','wind']
+ vars_info = ['daily tmax (K)','daily tmin (K)','daily total precip (mm)','daily mean wind speed (m/s)']
+ nt = 1
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,tstep,nt)
+
+ #Write to file
+ for var in vars:
+  data = np.ma.getdata(ga.exp(var))
+  fp.variables[var][0] = data
 
  #Close access to all files in grads
  ga("close 1")
+
+ #Finalize connection for FNL analysis
+ Finalize_NCEP_FNL_Connection()
+
+ #Finalize and close NETCDF file
+ fp.close()
+
+ #Remove files from the workspace
+ os.system('rm -f %s/fnl_*' % workspace)
 
 #def Download_and_Process_3b42RT():
 
@@ -121,18 +193,15 @@ dims['minlon'] = 0.1250
 dims['nlat'] = 720
 dims['nlon'] = 1440
 dims['res'] = 0.250
+dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
+dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
+connection_info = {}
+connection_info['NCEP_FNL'] = {}
+connection_info['NCEP_FNL']['password'] = 'ZlWBqFNK'
+connection_info['NCEP_FNL']['username'] = 'chaneyna@gmail.com'
 
 #Open connection to grads through pygrads
-#ga = grads.GaNum(Bin='grads',Window=False,Echo=False)
 ga = grads.GrADS(Bin='grads',Window=False,Echo=False)
 
-#Initialize connection for FNL analysis
-pswd = 'ZlWBqFNK'
-user = 'chaneyna@gmail.com'
-Initialize_NCEP_FNL_Connection(user,pswd)
-
 #Download and process the gfs analysis data
-Download_and_Process_NCEP_FNL_Analysis(date,dims)
-
-#Finalize connection for FNL analysis
-Finalize_NCEP_FNL_Connection()
+Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
