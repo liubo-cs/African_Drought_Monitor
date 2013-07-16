@@ -55,7 +55,7 @@ def Create_NETCDF_File(dims,file,vars,vars_info,tinitial,tstep,nt):
  #Data
  i = 0
  for var in vars:
-  f.createVariable(var,'f',('t','lat','lon'),fill_value=-9.99e+08)
+  f.createVariable(var,'f',('t','lat','lon'),fill_value=-99999)
   f.variables[var].long_name = vars_info[i]
   i = i + 1
 
@@ -164,18 +164,73 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
 
-#def Download_and_Process_3b42RT():
+def Download_and_Process_3b42RT(date,dims):
 
- #Download all precipitation for the day
+ workspace = '../WORKSPACE'
+ tmpa_3b42rt_root = '../DATA/3B42RT'
+ dt = datetime.timedelta(hours=3)
+ idate = date
 
- #Create control file
+ #Download date of TMPA 3b42rt product
+ for i in xrange(0,9):
+  ftp_root = 'ftp://disc2.nascom.nasa.gov/data/TRMM/Gridded/3B42RT/%04d%02d' % (date.year,date.month)
+  #ftp_root = 'ftp://trmmopen.gsfc.nasa.gov/pub/merged/mergeIRMicro/%04d' % date.year
+  file = "3B42RT.%04d.%02d.%02d.%02dz.bin" % (date.year,date.month,date.day,date.hour)
+  ftp_file = '%s/%s' % (ftp_root,file)
+  dwncmd = 'wget -P %s %s' % (workspace,ftp_file)
+  if os.path.isfile('%s/%s' % (workspace,file)) == False:
+   os.system(dwncmd)
+  date = date + dt
 
- #Make daily file   
+ #Construct the control file
+ ctl_file = '3B42RT.%04d.%02d.%02d.ctl' % (idate.year,idate.month,idate.day)
+ f = open('%s/%s' % (workspace,ctl_file), 'w')
+ f.write('dset ^3B42RT.%y4.%m2.%d2.%h2z.bin\n')
+ f.write('options template byteswapped\n')
+ f.write('title Real-Time Three Hourly TRMM and Other Satellite Rainfall (3B42RT)\n')
+ f.write('undef -99999.0\n')
+ f.write('xdef 1440 linear 0.1250 0.25\n')
+ f.write('ydef 480  linear -59.8750 0.25\n')
+ f.write('zdef 1 levels 10000\n')
+ f.write('tdef 9 linear 00Z%02d%s%04d 3hr\n' % (idate.day,idate.strftime('%b'),idate.year))
+ f.write('vars 1\n')
+ f.write('p 0 99 Precipitation (mm/hr)\n')
+ f.write('endvars\n')
+ f.close()
+
+ #Open access to the file
+ ga("open %s/%s" % (workspace,ctl_file))
+
+ #Define the output variables
+ ga("tmp = 1.5*p(t=1) + 1.5*p(t=9) + 3*sum(p,t=2,t=8)") #mm/day
+ ga("prec = maskout(tmp,tmp)")
+
+ #Set to new region
+ ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+ ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+
+ #Regrid to 1/4 degree
+ Grads_Regrid("prec","prec",dims)
+
+ #Create and open access to netcdf file
+ netcdf_file = '3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ file = '%s/%s' % (tmpa_3b42rt_root,netcdf_file)
+ vars = ['prec']
+ vars_info = ['daily total precip (mm)']
+ nt = 1
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,tstep,nt)
+
+ #Write to file
+ for var in vars:
+  data = np.ma.getdata(ga.exp(var))
+  fp.variables[var][0] = data
+
+ #Close access to all files in grads
+ ga("close 1")
+
+ return
  
-
- #1. Download global GFS analysis fields
-
-
 #1. Determine the period that needs to be updated
 
 #2. Download all the relevant data
@@ -206,3 +261,8 @@ ga = grads.GrADS(Bin='grads',Window=False,Echo=False)
 
 #Download and process the gfs analysis data
 Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
+
+#Download and process the 3b42rt precipitation data
+Download_and_Process_3b42RT(date,dims)
+
+#Prepare all the data for the gds server
