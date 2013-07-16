@@ -11,6 +11,7 @@ import datetime
 import os
 import grads
 import numpy as np
+import fileinput
 
 #import matplotlib.pyplot as plt
 
@@ -20,137 +21,78 @@ def Grads_Regrid(var_in,var_out,dims):
 
  return
 
-def Download_NCEP_FNL_Analysis(date):
-
- pswd = 'ZlWBqFNK'
- user = 'chaneyna@gmail.com'
+def Initialize_NCEP_FNL_Connection(user,pswd):
 
  #Login to server
  syscmd = "wget --no-check-certificate -O /dev/null --save-cookies auth.rda_ucar_edu --post-data=\"email=%s&passwd=%s&action=login\" =\"email=%s&passwd=%s&action=login\" https://rda.ucar.edu/cgi-bin/login" % (user,pswd,user,pswd)
  os.system(syscmd)
 
- #Download data
- dwncmd = 'wget -N --no-check-certificate --load-cookies auth.rda_ucar_edu http://rda.ucar.edu/data/ds083.2/'
- file = "grib1/2013/2013.07/fnl_20130715_00_00_c"
- os.system("%s%s" % (dwncmd,file))
+ return
+
+def Finalize_NCEP_FNL_Connection():
 
  #Disconnect from server
  os.system('rm -f auth.rda_ucar_edu')
 
-def Download_and_Process_GFS_Analysis(date,dims):
+ return
 
- #Analysis (Complete)
+def Download_NCEP_FNL_Analysis(date,root):
+
+ #Download data
+ grb_file = "fnl_%04d%02d%02d_%02d_00_c" % (date.year,date.month,date.day,date.hour)
+ dwncmd = 'wget -N --no-check-certificate -P %s --load-cookies auth.rda_ucar_edu http://rda.ucar.edu/data/ds083.2/grib1/%04d/%04d.%02d/' % (root,date.year,date.year,date.month)
+ if os.path.isfile('%s/%s' % (root,grb_file)) == False:
+  os.system("%s%s" % (dwncmd,grb_file))
+
+def Download_and_Process_NCEP_FNL_Analysis(date,dims):
+
  workspace = '../WORKSPACE'
- gfs_analysis_root = '../DATA/GFS_ANALYSIS'
- hours = [0,6,12,18]
-
- #Download all the analysis files for the day (+6 hours)
+ fnl_analysis_root = '../DATA/FNL_ANALYSIS'
  dt = datetime.timedelta(hours=6)
- idate = date + dt
- fdate = idate + 3*dt
- tmp = idate
- while tmp < fdate:
-  ftp_root = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d' % (tmp.year,tmp.month,tmp.year,tmp.month,tmp.day)
-  grb2_file = 'gfsanl_4_%04d%02d%02d_%02d00_000.grb2'  % (tmp.year,tmp.month,tmp.day,tmp.hour)
-  if os.path.isfile('%s/%s' % (workspace,grb2_file)) == False:
-   os.system('wget -P %s %s/%s' % (workspace,ftp_root,grb2_file))
-  tmp = tmp + dt
+ idate = date
 
+ #Download date of NCEP Final Analysis (http://rda.ucar.edu/datasets/ds083.2/)
+ for i in xrange(0,4):
+  date = date + dt
+  Download_NCEP_FNL_Analysis(date,workspace)
+  
  #Create index and control file for the entire period
- ctl_file = 'gfsanl_4_%04d%02d%02d_000.ctl' % (date.year,date.month,date.day)
- grb2_file = 'gfsanl_4_%y4%m2%d2_%h200_000.grb2'
- print 'perl ../LIBRARIES/g2ctl -0 %s/%s > %s/%s' % (workspace,grb2_file,workspace,ctl_file)
- os.system('perl ../LIBRARIES/g2ctl -0 %s/%s > %s/%s' % (workspace,grb2_file,workspace,ctl_file))
+ ctl_file = 'fnl_%04d%02d%02d_00_c.ctl' % (idate.year,idate.month,idate.day)
+ grb_file = 'fnl_%04d%02d%s_%s_00_c'% (idate.year,idate.month,'%d2','%h2')
+ os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s > %s/%s' % (workspace,grb_file,workspace,ctl_file))
+
+ #Correct errors in ctl file
+ os.system("sed -i 's/18hr/6hr/g' %s/%s" % (workspace,ctl_file))
+ os.system("sed -i 's/tdef 2/tdef 4/g' %s/%s" % (workspace,ctl_file))
+
+ #Create index file
  os.system('gribmap -0 -i %s/%s' % (workspace,ctl_file))
-
- #Open access to the file
- ga("open %s/%s" % (workspace,ctl_file))
- '''
- #3hr Forecast (3 hours after each analysis period)
- workspace = '../WORKSPACE'
- gfs_analysis_root = '../DATA/GFS_ANALYSIS'
- hours = [0,6,12,18]
- ftp_root = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d' % (date.year,date.month,date.year,date.month,date.day)
-
- #Download all the analysis files for the day (+6 hours)
- for hour in hours:
-  grb2_file = 'gfsanl_4_%04d%02d%02d_%02d00_003.grb2'  % (date.year,date.month,date.day,hour)
-  if os.path.isfile('%s/%s' % (workspace,grb2_file)) == False:
-   os.system('wget -P %s %s/%s' % (workspace,ftp_root,grb2_file))
-
- #Create index and control file for the entire period
- ctl_file = 'gfsanl_4_%04d%02d%02d_003.ctl' % (date.year,date.month,date.day)
- grb2_file = 'gfsanl_4_%04d%02d%02d_%sh200_003.grb2' % (date.year,date.month,date.day,'%')
- os.system('perl ../LIBRARIES/g2ctl -0 %s/%s > %s/%s' % (workspace,grb2_file,workspace,ctl_file))
- os.system('gribmap -0 -i %s/%s' % (workspace,ctl_file))
-
- #Open access to the file
- ga("open %s/%s" % (workspace,ctl_file))
-
- #6hr Forecast (6 hours after each analysis period)
- workspace = '../WORKSPACE'
- gfs_analysis_root = '../DATA/GFS_ANALYSIS'
- hours = [0,6,12,18]
- ftp_root = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d' % (date.year,date.month,date.year,date.month,date.day)
  
- #Download all the analysis files for the day (+6 hours)
- for hour in hours:
-  grb2_file = 'gfsanl_4_%04d%02d%02d_%02d00_006.grb2'  % (date.year,date.month,date.day,hour)
-  if os.path.isfile('%s/%s' % (workspace,grb2_file)) == False:
-   os.system('wget -P %s %s/%s' % (workspace,ftp_root,grb2_file))
- 
- #Create index and control file for the entire period
- ctl_file = 'gfsanl_4_%04d%02d%02d_006.ctl' % (date.year,date.month,date.day)
- grb2_file = 'gfsanl_4_%04d%02d%02d_%sh200_006.grb2' % (date.year,date.month,date.day,'%')
- os.system('perl ../LIBRARIES/g2ctl -0 %s/%s > %s/%s' % (workspace,grb2_file,workspace,ctl_file))
- os.system('gribmap -0 -i %s/%s' % (workspace,ctl_file))
-
  #Open access to the file
  ga("open %s/%s" % (workspace,ctl_file))
- '''
- exit()
 
  #Define the output variables
- ga("set t 1")
- tmp2m = []
- for t in xrange(1,5):
-  tmp2m.append(ga.exp("tmp2m"))
- #tmax = np.max(tmp2m,axis=0)
- #tmin = np.min(tmp2m,axis=0)
- #print tmax
- ga.imp("tmax",np.max(tmp2m,axis=0))
- #ga.imp("tmin",tmin)
- 
- 
- ga("tmax = 0")
- ga("tmin = 0")
- ga("prec = sum(apcpsfc.2,t=1,t=4) + sum(apcpsfc.2,t=1,t=4)")
- ga("wind = 0")
+ ga("tmax = max(TMAX2m,t=1,t=4)")
+ ga("tmin = min(TMIN2m,t=1,t=4)")
+ ga("prec = 3600*24*sum(pratesfc,t=1,t=4)/4")
+ ga("wind = pow(pow(UGRD10m,2) + pow(VGRD10m,2),0.5)")
 
- #Calculate the output variables for each time step
- #for ifile in xrange(1,len(hours)+1):
- # ga("tmax = tmax 
  #Regrid to 1/4 degree
- var_out = "prec"
- var_in = "prec"
- Grads_Regrid(var_in,var_out,dims)
+ Grads_Regrid("tmax","tmax",dims)
+ Grads_Regrid("tmin","tmin",dims)
+ Grads_Regrid("prec","prec",dims)
+ Grads_Regrid("wind","wind",dims)
 
  #Save to netcdf file
- netcdf_file = 'gfsanl_4_%04d%02d%02d_006_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
- ga("set sdfwrite -flt -zip %s/%s" % (gfs_analysis_root,netcdf_file))
+ netcdf_file = 'fnlanl_%04d%02d%02d_006_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ ga("set sdfwrite -flt -zip %s/%s" % (fnl_analysis_root,netcdf_file))
  ga("sdfwrite prec")
-
- #Make daily file with desired variables
- 
- #for ifile in xrange(1,len(hours)+1):
-  
-  
+ ga("sdfwrite tmax")
+ ga("sdfwrite tmin")
+ ga("sdfwrite wind")
 
  #Close access to all files in grads
- ga("close 3")
- ga("close 2")
  ga("close 1")
-  
 
 #def Download_and_Process_3b42RT():
 
@@ -184,7 +126,13 @@ dims['res'] = 0.250
 #ga = grads.GaNum(Bin='grads',Window=False,Echo=False)
 ga = grads.GrADS(Bin='grads',Window=False,Echo=False)
 
+#Initialize connection for FNL analysis
+pswd = 'ZlWBqFNK'
+user = 'chaneyna@gmail.com'
+Initialize_NCEP_FNL_Connection(user,pswd)
+
 #Download and process the gfs analysis data
+Download_and_Process_NCEP_FNL_Analysis(date,dims)
 
-Download_and_Process_GFS_Analysis(date,dims)
-
+#Finalize connection for FNL analysis
+Finalize_NCEP_FNL_Connection()
