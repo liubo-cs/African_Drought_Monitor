@@ -85,10 +85,15 @@ def Finalize_NCEP_FNL_Connection():
 def Download_NCEP_FNL_Analysis(date,root):
 
  #Download data
- grb_file = "fnl_%04d%02d%02d_%02d_00_c" % (date.year,date.month,date.day,date.hour)
- dwncmd = 'wget -N --no-check-certificate -P %s --load-cookies auth.rda_ucar_edu http://rda.ucar.edu/data/ds083.2/grib1/%04d/%04d.%02d/' % (root,date.year,date.year,date.month)
- if os.path.isfile('%s/%s' % (root,grb_file)) == False:
-  os.system("%s%s" % (dwncmd,grb_file))
+ date_change = datetime.datetime(2008,9,30,12)
+ new_file = "fnl_%04d%02d%02d_%02d_00" % (date.year,date.month,date.day,date.hour)
+ grb_file = new_file
+ if date >= date_change:
+  grb_file = "fnl_%04d%02d%02d_%02d_00_c" % (date.year,date.month,date.day,date.hour)
+ dwncmd = 'wget -N --no-check-certificate -O %s/%s --load-cookies auth.rda_ucar_edu http://rda.ucar.edu/data/ds083.2/grib1/%04d/%04d.%02d/' % (root,new_file,date.year,date.year,date.month)
+ os.system("%s%s" % (dwncmd,grb_file))
+
+ return 
 
 def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
 
@@ -97,19 +102,14 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  dt = datetime.timedelta(hours=6)
  idate = date
 
- #Initialize connection for FNL analysis
- pswd = connection_info['NCEP_FNL']['password']
- user = connection_info['NCEP_FNL']['username']
- Initialize_NCEP_FNL_Connection(user,pswd)
-
  #Download date of NCEP Final Analysis (http://rda.ucar.edu/datasets/ds083.2/)
  for i in xrange(0,4):
   date = date + dt
   Download_NCEP_FNL_Analysis(date,workspace)
   
  #Create index and control file for the entire period
- ctl_file = 'fnl_%04d%02d%02d_00_c.ctl' % (idate.year,idate.month,idate.day)
- grb_file = 'fnl_%04d%02d%s_%s_00_c'% (idate.year,idate.month,'%d2','%h2')
+ ctl_file = 'fnl_%04d%02d%02d_00.ctl' % (idate.year,idate.month,idate.day)
+ grb_file = 'fnl_%04d%02d%s_%s_00'% (idate.year,idate.month,'%d2','%h2')
  os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s > %s/%s' % (workspace,grb_file,workspace,ctl_file))
 
  #Correct errors in ctl file
@@ -122,6 +122,10 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  
  #Open access to the file
  ga("open %s/%s" % (workspace,ctl_file))
+
+ #Set region
+ ga("set lat -89.5 89.5")
+ ga("set lon -179.5 179.5")
 
  #Define the output variables
  ga("tmax = max(TMAX2m,t=1,t=4)")
@@ -140,7 +144,7 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  Grads_Regrid("wind","wind",dims)
 
  #Create and open access to netcdf file
- netcdf_file = 'fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ netcdf_file = 'fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
  file = '%s/%s' % (fnl_analysis_root,netcdf_file)
  vars = ['tmax','tmin','prec','wind']
  vars_info = ['daily tmax (K)','daily tmin (K)','daily total precip (mm)','daily mean wind speed (m/s)']
@@ -157,7 +161,7 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  ga("close 1")
 
  #Finalize connection for FNL analysis
- Finalize_NCEP_FNL_Connection()
+ #Finalize_NCEP_FNL_Connection()
 
  #Finalize and close NETCDF file
  fp.close()
@@ -179,8 +183,8 @@ def Download_and_Process_3b42RT(date,dims):
   file = "3B42RT.%04d.%02d.%02d.%02dz.bin" % (date.year,date.month,date.day,date.hour)
   ftp_file = '%s/%s' % (ftp_root,file)
   dwncmd = 'wget -P %s %s' % (workspace,ftp_file)
-  if os.path.isfile('%s/%s' % (workspace,file)) == False:
-   os.system(dwncmd)
+  #if os.path.isfile('%s/%s' % (workspace,file)) == False:
+  os.system(dwncmd)
   date = date + dt
 
  #Construct the control file
@@ -202,6 +206,10 @@ def Download_and_Process_3b42RT(date,dims):
  #Open access to the file
  ga("open %s/%s" % (workspace,ctl_file))
 
+ #Set region
+ ga("set lat -89.875 89.875")
+ ga("set lon -179.875 179.875")
+
  #Define the output variables
  ga("tmp = 1.5*p(t=1) + 1.5*p(t=9) + 3*sum(p,t=2,t=8)") #mm/day
  ga("prec = maskout(tmp,tmp)")
@@ -214,7 +222,7 @@ def Download_and_Process_3b42RT(date,dims):
  Grads_Regrid("prec","prec",dims)
 
  #Create and open access to netcdf file
- netcdf_file = '3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ netcdf_file = '3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
  file = '%s/%s' % (tmpa_3b42rt_root,netcdf_file)
  vars = ['prec']
  vars_info = ['daily total precip (mm)']
@@ -230,6 +238,12 @@ def Download_and_Process_3b42RT(date,dims):
  #Close access to all files in grads
  ga("close 1")
 
+ #close output file
+ fp.close()
+
+ #Remove files from the workspace
+ os.system('rm -f %s/3B42RT*' % workspace)
+
  return
  
 #1. Determine the period that needs to be updated
@@ -240,15 +254,16 @@ def Download_and_Process_3b42RT(date,dims):
 
 #4. Run all the relevant models
 
-date = datetime.datetime(2013,6,12)
 dims = {}
-dims['minlat'] = -89.8750
-dims['minlon'] = 0.1250
-dims['nlat'] = 720
-dims['nlon'] = 1440
+dims['minlat'] = -34.875000 #-89.8750
+dims['minlon'] = -18.875000 #0.1250
+dims['nlat'] = 292 #720
+dims['nlon'] = 296 #1440
 dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
+idate = datetime.datetime(2001,1,1)
+fdate = datetime.datetime(2009,12,31)
 
 #Load connection info (usernames and passwords)
 data = np.loadtxt('CONNECTION_INFO.txt',skiprows=1,dtype={'names': ('domain','username','password'), 'formats': ('S100','S100','S100')})
@@ -257,14 +272,26 @@ connection_info['NCEP_FNL'] = {}
 connection_info['NCEP_FNL']['password'] = data['password']
 connection_info['NCEP_FNL']['username'] = data['username']
 
+#Initialize connection for FNL analysis
+pswd = connection_info['NCEP_FNL']['password']
+user = connection_info['NCEP_FNL']['username']
+Initialize_NCEP_FNL_Connection(user,pswd)
+
 #Open connection to grads through pygrads
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
 
-#Download and process the gfs analysis data
-Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
+date = idate
+dt = datetime.timedelta(days=1)
+while date <= fdate:
+ print date
 
-#Download and process the 3b42rt precipitation data
-Download_and_Process_3b42RT(date,dims)
+ #Download and process the gfs analysis data
+ #Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
 
-#Prepare all the data for the gds server
+ #Download and process the 3b42rt precipitation data
+ Download_and_Process_3b42RT(date,dims)
+ date = date + dt
+
+#Finalize connection for FNL analysis
+Finalize_NCEP_FNL_Connection()
