@@ -7,6 +7,7 @@
 # Purpose: Main driver of the drought monitor
 ##################################################################
 
+
 import datetime
 import os
 import grads
@@ -131,7 +132,7 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info):
  ga("tmax = max(TMAX2m,t=1,t=4)")
  ga("tmin = min(TMIN2m,t=1,t=4)")
  ga("prec = 3600*24*sum(pratesfc,t=1,t=4)/4")
- ga("wind = pow(pow(UGRD10m,2) + pow(VGRD10m,2),0.5)")
+ ga("wind = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
 
  #Set to new region
  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
@@ -245,6 +246,64 @@ def Download_and_Process_3b42RT(date,dims):
  os.system('rm -f %s/3B42RT*' % workspace)
 
  return
+
+def Download_and_Process_GFS_forecast(date,dims):
+
+ print "Downloading and processing the gfs 7-day forecast"
+ gfs_hd_root = '../DATA/GFS'
+
+ #Establish connection to 00 forecast
+ gds_file = 'http://nomads.ncdc.noaa.gov:80/dods/NCEP_GFS/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_0000_fff' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day)
+ #gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs_hd/gfs_hd%04d%02d%02d/gfs_hd_00z' % (date.year,date.month,date.day)
+ ga("sdfopen %s" % gds_file)
+
+ #Create and open access to netcdf file
+ nt = 7
+ netcdf_file = 'gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
+ file = '%s/%s' % (gfs_hd_root,netcdf_file)
+ vars = ['tmax','tmin','prec','wind']
+ vars_info = ['daily tmax (K)','daily tmin (K)','daily total precip (mm)','daily mean wind speed (m/s)']
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,tstep,nt)
+
+ #Process each day
+ t1 = 2
+ t2 = 9
+ for t in xrange(0,nt):
+ 
+  #Set region
+  ga("set lat -89.5 89.5")
+  ga("set lon -179.5 179.5")
+
+  #Define the output variables
+  ga("tmax = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
+  ga("tmin = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
+  ga("prec = 3600*24*sum(oprate,t=%d,t=%d)/8" % (t1,t2))
+  ga("wind = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
+
+  #Set to new region
+  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+
+  #Regrid to 1/4 degree
+  Grads_Regrid("tmax","tmax",dims)
+  Grads_Regrid("tmin","tmin",dims)
+  Grads_Regrid("prec","prec",dims)
+  Grads_Regrid("wind","wind",dims)
+
+  #Write to file
+  for var in vars:
+   data = np.ma.getdata(ga.exp(var))
+   fp.variables[var][t] = data
+
+  #Update time
+  t1 = t1 + 8
+  t2 = t2 + 8
+
+ #Close access to all files in grads
+ ga("close 1")
+
+ return
  
 #1. Determine the period that needs to be updated
 
@@ -262,7 +321,7 @@ dims['nlon'] = 296 #1440
 dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
-idate = datetime.datetime(2001,1,1)
+idate = datetime.datetime(2013,7,21)
 fdate = datetime.datetime(2009,12,31)
 
 #Load connection info (usernames and passwords)
@@ -282,16 +341,22 @@ grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
 
 date = idate
-dt = datetime.timedelta(days=1)
-while date <= fdate:
- print date
+#dt = datetime.timedelta(days=1)
+#while date <= fdate:
+# print date
 
  #Download and process the gfs analysis data
- #Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
+Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
 
  #Download and process the 3b42rt precipitation data
- Download_and_Process_3b42RT(date,dims)
- date = date + dt
+Download_and_Process_3b42RT(date,dims)
+# date = date + dt
 
 #Finalize connection for FNL analysis
 Finalize_NCEP_FNL_Connection()
+
+#Download gfs forecast
+Download_and_Process_GFS_forecast(date,dims)
+
+#Reboot the gds server
+
