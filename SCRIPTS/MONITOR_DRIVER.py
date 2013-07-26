@@ -98,7 +98,17 @@ os.system('../LIBRARIES/gds-2.0/rebootserver')
 '''
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
-date = datetime.datetime(2010,12,31)
+idate = datetime.datetime(2013,6,1)
+fdate = datetime.datetime(2013,6,30)
+date = idate
+ 
+while date <= fdate:
+
+ print date
+ #Download and process modis NDVI
+ ml.Download_and_Process_NDVI(date,dims)
+ date = date + dt
+'''
 #End of month routines
 ndate = date + dt
 if date.month != ndate.month:
@@ -128,3 +138,4 @@ if date.year != ndate.year:
  ctl_in = "../DATA/FNL_ANALYSIS/fnlanl_daily_0.25deg.ctl"
  file_out = "../DATA/FNL_ANALYSIS/YEARLY/fnlanl_%04d_daily_0.250deg.nc" % (idate.year)
  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+'''
