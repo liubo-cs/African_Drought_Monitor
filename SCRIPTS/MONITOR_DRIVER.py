@@ -12,50 +12,32 @@ import datetime
 import numpy as np
 import grads
 import os
-def datetime2gradstime(date):
 
- #Convert datetime to grads time
- str = date.strftime('%HZ%d%b%Y')
- 
- return str
+'''
+def Download_and_Process_Seasonal_Forecast(date):
 
-def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
-
- #Open file in grads
- ga("xdfopen %s" % ctl_in)
-
- #What variables exist in the dataset?
- qh = ga.query("file")
-
- #Create and open access to netcdf file
- nt = 1
- tstep = 'hours'
- fp = ml.Create_NETCDF_File(dims,file_out,qh.vars,qh.var_info,idate,tstep,nt) #Create and open access to netcdf file
-
- #Iterate through the variables
- for var in qh.vars:
- 
-   #Determine what type of operation
-   type = "ave"
-   if var == "prec":
-    type = "sum"
-
-   #Convert times
-   t1 = datetime2gradstime(idate)
-   t2 = datetime2gradstime(fdate)
-
-   #Perform operation
-   ga("data = %s(%s,time=%s,time=%s)" % (type,var,t1,t2))
-
-   #Write to file
-   data = np.ma.getdata(ga.exp("data"))
-   fp.variables[var][0] = data
-
- #Close access to the grads file
- ga("close 1")
-
-
-
+ models = ('CMC1-CanCM3','CMC2-CanCM4','COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012')
+ nensembles = (10,10,6,10,12)
+ type = ('.FORECAST/','.FORECAST/','','','')
+ vars = ('prec','tref')
+ month = date.strftime('%b') 
+ year = date.year
+ dir0 = '../DATA/SEASONAL_FORECAST/%04d%02d' % (date.year,date.month)
+ if not os.path.exists(dir0):
+  os.makedirs(dir0)
+ for var in vars:
+  dir = dir0 + '/' + var
+  if not os.path.exists(dir):
+   os.makedirs(dir)
+  i = 0 
+  for model in models:
+   for ens in xrange(1,nensembles[i]+1):
+    root = ''
+    http_file = 'http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.{0}/{3}.MONTHLY/.{5}/S/%280000%201%20{1}%20{2}%29%280000%201%20{1}%20{2}%29RANGEEDGES/M/%28{4}.%29VALUES/M/removeGRID/S/removeGRID/-9.9900000E08/setmissing_value/data.cdf'.format(model,month,year,type[i],ens,var)
+    file_out = '{0}/{1}_{2}.nc'.format(dir,model,ens)
+    os.system('wget -O {0} {1}'.format(file_out,http_file))
+   i = i + 1
+'''
  
 #1. Determine the period that needs to be updated
 
@@ -96,34 +78,49 @@ ml.Download_and_Process_GFS_forecast(date,dims)
 #Restart the gds server
 os.system('../LIBRARIES/gds-2.0/rebootserver')
 '''
-grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
-ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
-idate = datetime.datetime(2013,6,1)
-fdate = datetime.datetime(2013,6,30)
+#grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
+#ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
+idate = datetime.datetime(2001,1,1)
+fdate = datetime.datetime(2008,12,31)
 date = idate
- 
-while date <= fdate:
 
- print date
- #Download and process modis NDVI
- ml.Download_and_Process_NDVI(date,dims)
- date = date + dt
 '''
-#End of month routines
-ndate = date + dt
-if date.month != ndate.month:
- print "Tomorrow is a new month. We have some extra work to do today."
- idate = datetime.datetime(date.year,date.month,1)
- fdate = date
- #3B42RT
- ctl_in = "../DATA/3B42RT/3B42RT_daily_0.25deg.ctl"
- file_out = "../DATA/3B42RT/MONTHLY/3B42RT_%04d%02d_daily_0.250deg.nc" % (idate.year,idate.month)
- Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+#Fit a gamma distribution to the 3B42RT product
+ctl_in = "../DATA/3B42RT/MONTHLY/3B42RT_monthly_0.25deg.ctl"
+file_out = "../WORKSPACE/parameters.nc"
+dt = datetime.timedelta(days = 31)
+ml.Fit_Distribution('gamma',ctl_in,idate,fdate,dt,'prec',file_out,dims)
+'''
+date = datetime.datetime(2013,1,1)
+#Download and process the seasonal forecast
+ml.Download_and_Process_Seasonal_Forecast(date)
+
+
+'''
+print date
+#Download and process modis NDVI
+ml.Download_and_Process_NDVI(date,dims)
+date = date + dt
+
+while date <= fdate:
+ #End of month routines
+ ndate = date + dt
+ print date,fdate
+ if date.month != ndate.month:
+  print "Tomorrow is a new month. We have some extra work to do today."
+  idate_in = datetime.datetime(date.year,date.month,1)
+  fdate_in = date
+  #3B42RT
+  ctl_in = "../DATA/3B42RT/3B42RT_daily_0.25deg.ctl"
+  file_out = "../DATA/3B42RT/MONTHLY/3B42RT_%04d%02d_daily_0.250deg.nc" % (idate_in.year,idate_in.month)
+  Compute_and_Output_Averages(ctl_in,file_out,idate_in,fdate_in,dims)
+ date = date + dt
+
  #FNL
- ctl_in = "../DATA/FNL_ANALYSIS/fnlanl_daily_0.25deg.ctl"
- file_out = "../DATA/FNL_ANALYSIS/MONTHLY/fnlanl_%04d%02d_daily_0.250deg.nc" % (idate.year,idate.month)
- Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
- 
+ #ctl_in = "../DATA/FNL_ANALYSIS/fnlanl_daily_0.25deg.ctl"
+ #file_out = "../DATA/FNL_ANALYSIS/MONTHLY/fnlanl_%04d%02d_daily_0.250deg.nc" % (idate.year,idate.month)
+ #Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+
 #End of year routines
 ndate = date + dt
 if date.year != ndate.year:
