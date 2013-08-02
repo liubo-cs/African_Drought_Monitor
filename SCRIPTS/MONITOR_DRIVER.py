@@ -54,9 +54,9 @@ os.system('../LIBRARIES/gds-2.0/rebootserver')
 '''
 #grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 #ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
-idate = datetime.datetime(2012,1,1)
-fdate = datetime.datetime(2012,12,31)
-date = idate
+idate = datetime.datetime(2011,1,1)
+#fdate = datetime.datetime(2012,12,31)
+fdate = datetime.datetime(2011,6,30)
 
 '''
 #Fit a gamma distribution to the 3B42RT product
@@ -69,14 +69,17 @@ date = datetime.datetime(2013,1,1)
 #Download and process the seasonal forecast
 ml.Download_and_Process_Seasonal_Forecast(date)
 
-print date
 #Download and process modis NDVI
-ml.Download_and_Process_NDVI(date,dims)
-date = date + dt
+date = idate
+dt = datetime.timedelta(days=1)
+while date <= fdate:
+ print date
+ ml.Download_and_Process_NDVI(date,dims)
+ date = date + dt
 
 '''
 date= idate
-dt_ma = datetime.timedelta(days=30)
+dt_ma = [datetime.timedelta(days=60),datetime.timedelta(days=30),datetime.timedelta(days=20),datetime.timedelta(days=10),datetime.timedelta(days=5),datetime.timedelta(days=1)]
 dt = datetime.timedelta(days=1)
 while date <= fdate:
  print date
