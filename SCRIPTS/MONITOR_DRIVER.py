@@ -30,33 +30,32 @@ dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
-'''
-date = datetime.datetime.today()
-date = datetime.datetime(date.year,date.month,date.day) - 6*dt
-
-#Initialize connection for FNL analysis
-connection_info = ml.Initialize_NCEP_FNL_Connection()
+#date = datetime.datetime.today()
+#date = datetime.datetime(date.year,date.month,date.day) - 6*dt
+idate = datetime.datetime(2010,1,1)
+fdate = datetime.datetime(2010,1,1)
+date = datetime.datetime(2010,1,1)
+print date
 
 #Download and process the gfs analysis data
-ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,connection_info)
+ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
 
 #Download and process the 3b42rt precipitation data
 ml.Download_and_Process_3b42RT(date,dims)
 
-#Finalize connection for FNL analysis
-ml.Finalize_NCEP_FNL_Connection()
-
 #Download gfs forecast
-ml.Download_and_Process_GFS_forecast(date,dims)
+#ml.Download_and_Process_GFS_forecast(date,dims)
+
+'''
 
 #Restart the gds server
 os.system('../LIBRARIES/gds-2.0/rebootserver')
 '''
 #grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 #ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
-idate = datetime.datetime(2011,1,1)
+#idate = datetime.datetime(2011,1,1)
 #fdate = datetime.datetime(2012,12,31)
-fdate = datetime.datetime(2011,6,30)
+#fdate = datetime.datetime(2011,6,30)
 
 '''
 #Fit a gamma distribution to the 3B42RT product
@@ -77,7 +76,6 @@ while date <= fdate:
  ml.Download_and_Process_NDVI(date,dims)
  date = date + dt
 
-'''
 date= idate
 dt_ma = [datetime.timedelta(days=60),datetime.timedelta(days=30),datetime.timedelta(days=20),datetime.timedelta(days=10),datetime.timedelta(days=5),datetime.timedelta(days=1)]
 dt = datetime.timedelta(days=1)
@@ -86,7 +84,6 @@ while date <= fdate:
  ml.Compute_NDVI_moving_average(date,dt_ma,dims)
  date = date + dt
 
-'''
 
 while date <= fdate:
  #End of month routines
