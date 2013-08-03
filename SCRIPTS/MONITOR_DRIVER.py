@@ -30,25 +30,62 @@ dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
-#date = datetime.datetime.today()
-#date = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,1,1)
-fdate = datetime.datetime(2013,1,1)
-date = datetime.datetime(2013,1,1)
-print date
+date = datetime.datetime.today()
+idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
+idate = datetime.datetime(1948,1,1)
+fdate = datetime.datetime(1948,12,31)
+date = idate
 
-#Download and process the gfs analysis data
-ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+#SERVER SECTION
 
-#Download and process the 3b42rt precipitation data
-ml.Download_and_Process_3b42RT(date,dims)
+#################################################
+#REPROCESS DATA
+#################################################
 
-#Download gfs forecast
-ml.Download_and_Process_GFS_forecast(date,dims)
+#Reprocess available pgf data (historical)
+ml.Reprocess_PGF(dims,idate,fdate,dt)
+exit()
 
-#Download and process modis NDVI
-ml.Download_and_Process_NDVI(date,dims)
+while date <= fdate:
 
+ print date
+
+ #################################################
+ #DOWNLOAD AND PREPROCESS ALL THE REQUIRED DATA
+ #################################################
+
+ #Download and process the gfs analysis data
+ ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+ 
+ #Download and process the 3b42rt precipitation data
+ ml.Download_and_Process_3b42RT(date,dims)
+
+ #Download gfs forecast
+ ml.Download_and_Process_GFS_forecast(date,dims)
+
+ #Download and process modis NDVI
+ ml.Download_and_Process_NDVI(date,dims)
+
+ #Download and process the seasonal forecast
+ ml.Download_and_Process_Seasonal_Forecast(date)
+
+ date = date + dt
+
+#################################################
+#BIAS CORRECT AND PREPARE ALL THE REQUIRED DATA
+#################################################
+
+#CLIENT SECTION
+
+#################################################
+#RUN ALL THE MODELS
+#################################################
+
+#################################################
+#COMPUTE INDICES
+#################################################
+
+#Move the log to it's final place
 '''
 
 #Restart the gds server
@@ -79,7 +116,6 @@ while date <= fdate:
  ml.Download_and_Process_NDVI(date,dims)
  date = date + dt
 
-'''
 idate = datetime.datetime(2011,1,1)
 fdate = datetime.datetime(2011,12,31)
 date= idate
@@ -89,7 +125,6 @@ while date <= fdate:
  print date
  ml.Compute_NDVI_moving_average(date,dt_ma,dims)
  date = date + dt
-'''
 
 
 while date <= fdate:
