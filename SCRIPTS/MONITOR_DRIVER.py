@@ -33,18 +33,10 @@ dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
 idate = datetime.datetime(1948,1,1)
-fdate = datetime.datetime(1948,12,31)
+fdate = datetime.datetime(2008,12,31)
 date = idate
 
 #SERVER SECTION
-
-#################################################
-#REPROCESS DATA
-#################################################
-
-#Reprocess available pgf data (historical)
-ml.Reprocess_PGF(dims,idate,fdate,dt)
-exit()
 
 while date <= fdate:
 
@@ -54,11 +46,14 @@ while date <= fdate:
  #DOWNLOAD AND PREPROCESS ALL THE REQUIRED DATA
  #################################################
 
+ #Reprocess available pgf data (historical)
+ ml.Reprocess_PGF(date,dims)
+
  #Download and process the gfs analysis data
  ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
  
  #Download and process the 3b42rt precipitation data
- ml.Download_and_Process_3b42RT(date,dims)
+ ml.Download_and_Process_3b42RT(date,dims,'standard')
 
  #Download gfs forecast
  ml.Download_and_Process_GFS_forecast(date,dims)
@@ -68,6 +63,14 @@ while date <= fdate:
 
  #Download and process the seasonal forecast
  ml.Download_and_Process_Seasonal_Forecast(date)
+
+ #################################################
+ #COMPUTE MONTHLY AND ANNUAL PRODUCTS
+ #################################################
+
+ #ml.Compute_Averages_3b42RT(date,dims,dt)
+
+ ml.Compute_Averages_PGF(date,dims,dt,'standard')
 
  date = date + dt
 
@@ -84,18 +87,6 @@ while date <= fdate:
 #################################################
 #COMPUTE INDICES
 #################################################
-
-#Move the log to it's final place
-'''
-
-#Restart the gds server
-os.system('../LIBRARIES/gds-2.0/rebootserver')
-'''
-#grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
-#ga = grads.GaNum(Bin=grads_exe,Window=False,Echo=False)
-#idate = datetime.datetime(2011,1,1)
-#fdate = datetime.datetime(2012,12,31)
-#fdate = datetime.datetime(2011,6,30)
 
 '''
 #Fit a gamma distribution to the 3B42RT product
