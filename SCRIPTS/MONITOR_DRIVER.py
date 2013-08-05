@@ -12,6 +12,7 @@ import datetime
 import numpy as np
 import grads
 import os
+import dateutil.relativedelta as relativedelta
 
 #1. Determine the period that needs to be updated
 
@@ -32,12 +33,11 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(1948,1,1)
-fdate = datetime.datetime(2008,12,31)
+idate = datetime.datetime(2001,1,1)
+fdate = datetime.datetime(2001,1,6)
 date = idate
 
 #SERVER SECTION
-
 while date <= fdate:
 
  print date
@@ -65,14 +65,73 @@ while date <= fdate:
  ml.Download_and_Process_Seasonal_Forecast(date)
 
  #################################################
+ #BIAS CORRECT THE DOWNLOADED DATA
+ #################################################
+
+ #Bias correct the 3b42rt precipitation product
+ ml.BiasCorrect_and_Output_Forcing_3B42RT(date,dims,'rp')
+
+ #Bias correct the gfs final analysis product
+ #ml.BiasCorrect_and_Output_Forcing_GFS
+
+ #Bias correct the gfs forecast
+
+ #Bias correct the seasonal forecast
+  
+ #################################################
+ #RUN THE VIC MODEL
+ #################################################
+
+ #Prepare the VIC forcings
+ #ml.Prepare_Forcings(date,dims)
+
+
+ #################################################
+ #RUN ROUTING MODEL
+ #################################################
+
+ #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
  #################################################
 
  #ml.Compute_Averages_3b42RT(date,dims,dt)
 
- ml.Compute_Averages_PGF(date,dims,dt,'standard')
+ #ml.Compute_Averages_PGF(date,dims,dt,'standard')
+
+ #################################################
+ #COMPUTE INDICES
+ #################################################
+ 
+ #ml.Calculate_and_Output_SPI(date,dims,'rp')
 
  date = date + dt
+'''
+#################################################
+#FIT DISTR
+#################################################
+
+#PGF dataset
+#ctl_in = "../DATA/PGF/MONTHLY/pgf_monthly_0.25deg.ctl"
+#dt = relativedelta.relativedelta(years=1)
+#idate = datetime.datetime(1948,1,1)
+#fdate = datetime.datetime(2008,12,31)
+#dt_down = datetime.timedelta(days=0)
+#dt_up = relativedelta.relativedelta(days=0)
+#var = "prec"
+#type = "all"
+##Extract the desired data
+#data = ml.Extract_Data_Period_Average(idate,fdate,dt_down,dt_up,dt,ctl_in,var,type)
+#Calculate percentiles
+#pct = ml.Calculate_Percentiles(data)
+#dt = datetime.timedelta(days=1)
+#date = datetime.datetime(1950,1,1)
+#fdate = datetime.datetime(2008,12,31)
+#while date <= fdate:
+# ml.Calculate_and_Output_SPI(date,dims,'rp')
+# date = date + dt
+#Calculate the distribution parameters
+#file_out = "../WORKSPACE/parameters.nc"
+#ml.Fit_Distribution('gamma',data,file_out,dims)
 
 #################################################
 #BIAS CORRECT AND PREPARE ALL THE REQUIRED DATA
@@ -88,7 +147,6 @@ while date <= fdate:
 #COMPUTE INDICES
 #################################################
 
-'''
 #Fit a gamma distribution to the 3B42RT product
 ctl_in = "../DATA/3B42RT/MONTHLY/3B42RT_monthly_0.25deg.ctl"
 file_out = "../WORKSPACE/parameters.nc"
