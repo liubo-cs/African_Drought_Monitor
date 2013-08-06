@@ -1,0 +1,5 @@
+Jan 18, 2006: a bug found in make_dmy.c. The following change was made.
+ln 63
+    if(endday < days[global->endmonth-1]-1) endday++;
+change to
+    if(endday < days[global->endmonth-1]) endday++;

@@ -33,8 +33,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2001,1,1)
-fdate = datetime.datetime(2001,1,6)
+idate = datetime.datetime(1948,1,1)
+fdate = datetime.datetime(1948,1,31)
 date = idate
 
 #SERVER SECTION
@@ -69,27 +69,16 @@ while date <= fdate:
  #################################################
 
  #Bias correct the 3b42rt precipitation product
- ml.BiasCorrect_and_Output_Forcing_3B42RT(date,dims,'rp')
+ #ml.BiasCorrect_and_Output_Forcing_3B42RT(date,dims,'st')
 
  #Bias correct the gfs final analysis product
- #ml.BiasCorrect_and_Output_Forcing_GFS
+ #ml.BiasCorrect_and_Output_Forcing_FNL_Analysis
 
  #Bias correct the gfs forecast
+ #ml.BiasCorrect_and_Output_Forcing_GFS_Forecast
 
  #Bias correct the seasonal forecast
   
- #################################################
- #RUN THE VIC MODEL
- #################################################
-
- #Prepare the VIC forcings
- #ml.Prepare_Forcings(date,dims)
-
-
- #################################################
- #RUN ROUTING MODEL
- #################################################
-
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
  #################################################
@@ -105,6 +94,25 @@ while date <= fdate:
  #ml.Calculate_and_Output_SPI(date,dims,'rp')
 
  date = date + dt
+
+#################################################
+#RUN THE VIC MODEL
+#################################################
+
+#Prepare the VIC global parameter file
+ml.Prepare_VIC_Global_Parameter_File(idate,fdate,dims)
+
+#Prepare the VIC forcings
+forcing_file = ml.Prepare_VIC_Forcings_Historical(idate,fdate,dims)
+
+#Run VIC
+ml.Run_VIC(forcing_file)
+
+
+ 
+#################################################
+#RUN ROUTING MODEL
+#################################################
 '''
 #################################################
 #FIT DISTR
