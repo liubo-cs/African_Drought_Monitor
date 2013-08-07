@@ -34,7 +34,7 @@ dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
 idate = datetime.datetime(1948,1,1)
-fdate = datetime.datetime(1948,1,31)
+fdate = datetime.datetime(2008,12,31)
 date = idate
 
 #SERVER SECTION
@@ -50,7 +50,7 @@ while date <= fdate:
  ml.Reprocess_PGF(date,dims)
 
  #Download and process the gfs analysis data
- ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+ #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
  
  #Download and process the 3b42rt precipitation data
  ml.Download_and_Process_3b42RT(date,dims,'standard')
@@ -99,14 +99,18 @@ while date <= fdate:
 #RUN THE VIC MODEL
 #################################################
 
+#Run the model
+
+#ml.Run_VIC(forcing_file,idate,fdate)
+
 #Prepare the VIC global parameter file
-ml.Prepare_VIC_Global_Parameter_File(idate,fdate,dims)
+#ml.Prepare_VIC_Global_Parameter_File(idate,fdate,dims)
 
 #Prepare the VIC forcings
-forcing_file = ml.Prepare_VIC_Forcings_Historical(idate,fdate,dims)
+#forcing_file = ml.Prepare_VIC_Forcings_Historical(idate,fdate,dims)
 
 #Run VIC
-ml.Run_VIC(forcing_file)
+ml.Run_VIC(idate,fdate,dims)
 
 
  

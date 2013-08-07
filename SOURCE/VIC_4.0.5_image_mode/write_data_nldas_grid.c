@@ -109,14 +109,9 @@ void write_data_nldas_grid(out_data_struct *out_data,
       
       nvars  = 5;                                                  /* prec, evap, runoff, baseflow, Wdew */
       nvars += options.Nlayer;                                     /* moist */
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) nvars += 1;  /* rad_temp */
-      nvars += 2;                                                  /* net_short, r_net */
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) nvars += 1;  /* latent */
-      nvars += 5;                                                  /* evap_canop, evap_veg, evap_bare, sub_canop, sub_snow */
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) nvars += 2;  /* sensible, grnd_flux */
-      nvars += 3;                                                  /* aero_resist, surf_temp, albedo */
+      nvars += 4;                                                  /* net_short, r_net, long_net, surf_temp*/
+      nvars += 3;                                                  /* evap_canop, evap_veg, evap_bare, sub_canop, sub_snow */
       nvars += 3;                                                  /* swq, snow_depth, snow_canopy */
-      if(options.FULL_ENERGY) nvars +=4;                           /* advection, deltaCC, snow_flux, refreeze_energy */
       
       /* Allocate memory */
       
@@ -262,31 +257,20 @@ void write_data_nldas_grid(out_data_struct *out_data,
       fprintf(fctl, "baseflow        0 234 baseflow (mm)\n");
       fprintf(fctl, "Wdew            0  99 Wdew (mm)\n");
       for (i=1; i<=options.Nlayer; i++) fprintf(fctl, "sm%1d             0 151 soil moisture in layer %1d (mm)\n", i, i);
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) fprintf(fctl, "rad_temp        0 139 rad_temp (K)\n");
-      fprintf(fctl, "net_short       0 111 net_short (W/m^2)\n");
-      fprintf(fctl, "r_net           0  99 r_net (W/m^2)\n");
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) fprintf(fctl, "latent          0 121 latent (W/m^2)\n");
       fprintf(fctl, "evap_canop      0 200 evap_canop (mm)\n");
       fprintf(fctl, "evap_veg        0 210 evap_veg (mm)\n");
       fprintf(fctl, "evap_bare       0 199 evap_bare (mm)\n");
-      fprintf(fctl, "sub_canop       0  99 sub_canop (mm)\n");
-      fprintf(fctl, "sub_snow        0 173 sub_snow (mm)\n");
-      if (options.FULL_ENERGY || options.FROZEN_SOIL) {
-          fprintf(fctl, "sensible        0 122 sensible (W/m^2)\n");
-          fprintf(fctl, "grnd_flux       0 155 grnd_flux (W/m^2)\n");
-      }
-      fprintf(fctl, "aero_resist     0 174 aero_resist (s/m)\n");
-      fprintf(fctl, "surf_temp       0 138 surf_temp (C)\n");
-      fprintf(fctl, "albedo          0  84 albedo (fraction)\n");
+      fprintf(fctl, "net_short       0 111 net_short (W/m^2)\n");
+      fprintf(fctl, "net_long       0 111 net_long (W/m^2)\n");
+      //fprintf(fctl, "latent       0 111 latent (W/m^2)\n");
+      //fprintf(fctl, "sensible       0 111 sensible (W/m^2)\n");
+      //fprintf(fctl, "deltaH       0 111 deltaH (W/m^2)\n");
+      //fprintf(fctl, "grnd_flux       0 111 net_short (W/m^2)\n");
+      fprintf(fctl, "r_net           0  99 r_net (W/m^2)\n");
+      fprintf(fctl, "surf_temp           0  99 surf_temp (C)\n");
       fprintf(fctl, "swq             0  65 swq (mm)\n");
       fprintf(fctl, "snow_depth      0  66 snow_depth (cm)\n");
       fprintf(fctl, "snow_canop      0  99 snow_canop (mm)\n");
-      if (options.FULL_ENERGY) {
-          fprintf(fctl, "advection       0  99 advection (W/m^2)\n");
-          fprintf(fctl, "deltaCC         0  99 deltaCC (W/m^2)\n");
-          fprintf(fctl, "snow_flux       0 229 snow_flux (W/m^2)\n");
-          fprintf(fctl, "refreeze_energy 0  99 refreeze_energy (W/m^2)\n");
-      }
       fprintf(fctl, "endvars\n");
 
       fclose(fctl);
@@ -315,40 +299,24 @@ void write_data_nldas_grid(out_data_struct *out_data,
   for(j=0;j<options.Nlayer;j++) {    
     tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->moist[j];            i_var++;
   }
-  if(options.FULL_ENERGY || options.FROZEN_SOIL) {
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->rad_temp;            i_var++;
-  }
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->net_short;           i_var++;
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->r_net;               i_var++;
-  if(options.FULL_ENERGY || options.FROZEN_SOIL) {
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->latent;              i_var++;
-  }
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->evap_canop;          i_var++;
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->evap_veg;            i_var++;
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->evap_bare;           i_var++;
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->sub_canop;           i_var++;
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->sub_snow;            i_var++;
-  if(options.FULL_ENERGY || options.FROZEN_SOIL) {
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->sensible;            i_var++;
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->grnd_flux;           i_var++;
-  }
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->aero_resist;         i_var++;
+ 
+  /***** Write Energy Fluxes *****/
+  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->net_short;           i_var++;
+  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->net_long;           i_var++;
+  //tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->latent;           i_var++;
+  //tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->sensible;           i_var++;
+  //tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->deltaH;           i_var++;
+  //tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->grnd_flux;           i_var++;
+  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->r_net;               i_var++;
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->surf_temp;           i_var++;
-  tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->albedo;              i_var++;
 
   /***** Write Binary Snow Variables *****/
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->swq[0];              i_var++;
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->snow_depth[0];       i_var++;
-  
-  //fprintf(stderr, "at byte: %d\n", nvars*ncells*rec+ncells*i_var+cell_cnt-1);
-  
   tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->snow_canopy[0];      i_var++;
-  if(options.FULL_ENERGY) {
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->advection[0];        i_var++;
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->deltaCC[0];          i_var++;
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->snow_flux[0];        i_var++;
-    tmp_grid[nvars*ncells*rec+ncells*i_var+cell_cnt-1] = (float)out_data->refreeze_energy[0];  i_var++;
-  }
 
   //fprintf(stderr, "finish writing cell %d, record %d\n", cell_cnt, rec);
 
