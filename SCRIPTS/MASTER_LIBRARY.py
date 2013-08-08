@@ -513,7 +513,9 @@ def Download_and_Process_NDVI(date,dims):
 def getBit_array(x, p):
  
  #Determine the value of the pth bit position (0,1) 
- array cell_clim)
+ #array cell_clim)
+ print "REVISIT!!!!"
+ exit()
  array[:] = 2**p
  array = np.bitwise_and(x,array)
  array[array!=0] = 1
@@ -634,9 +636,12 @@ def Calculate_Percentiles(data_clim,data):
  for i in xrange(0,data.shape[1]):
   #print i
   for j in xrange(0,data.shape[2]):
+   if data[0,i,j] == -9.99e+08:
+    pct[0,i,j] = float('NaN')
+    continue
    data_cell_clim = data_clim[:,i,j]
    data_cell_clim = data_cell_clim[np.isnan(data_cell_clim) == 0]
-   pct[:,i,j] = library_f90.percentileofscore(data_cell_clim,data[i,j],random.random())
+   pct[:,i,j] = library_f90.percentileofscore(data_cell_clim,data[0,i,j],random.random())
 
  return pct
 
@@ -922,17 +927,19 @@ def Calculate_and_Output_NDVI_Percentiles(date,dims):
  if os.path.exists(file_out) == True:
   return
 
- if date < datetime.datetime(2000,3,1):
+ if date < datetime.datetime(2003,1,1):
   return
 
+ print_info_to_command_line("Computing the NDVI percentiles")
+
  dt = relativedelta.relativedelta(years=1)
- idate_mod09 = date - relativedelta.relativedelta(years=date.year - 2003)
- fdate_mod09 = date - relativedelta.relativedelta(years=date.year - 2007)
+ idate_modis = date - relativedelta.relativedelta(years=date.year - 2003)
+ fdate_modis = date - relativedelta.relativedelta(years=date.year - 2012)
  var = "ndvi30"
  type = "all"
 
  #moving average ndvi product
- ctl_mod09 = "../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl"
+ ctl_modis = "../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl"
 
  #Extract the required data
  print "Extracing modis data (Climatology)"
@@ -951,12 +958,12 @@ def Calculate_and_Output_NDVI_Percentiles(date,dims):
  #Output data
  nt = 1
  tstep = 'days'
- vars = ['pctndvi30']
+ vars = ['pct30day']
  vars_info = ['NDVI percentiles']
  #Create file
  fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
  #Write to file
- fp.variables['pct30'][0] = pct
+ fp.variables['pct30day'][0] = pct
  #Close file
  fp.close()
 
