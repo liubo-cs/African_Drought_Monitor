@@ -59,7 +59,7 @@ def Download_and_BiasCorrect(date):
  #Bias correct the seasonal forecast
  
  #Compute different moving averages of the ndvi product
- ml.Compute_NDVI_moving_average(date,dims)
+ #ml.Compute_NDVI_moving_average(date,dims)
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
@@ -74,6 +74,8 @@ def Download_and_BiasCorrect(date):
  #################################################
 
  #ml.Calculate_and_Output_SPI(date,dims,'rp')
+
+ ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  return
 
