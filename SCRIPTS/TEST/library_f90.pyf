@@ -1,0 +1,15 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module library_f90 ! in 
+    interface  ! in :library_f90
+        subroutine percentileofscore(scores,score,pct) ! in :library_f90:library_f90.f90
+            real*8 dimension(*) :: scores
+            real*8 :: score
+            real*8 :: pct
+        end subroutine percentileofscore
+    end interface 
+end python module library_f90
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

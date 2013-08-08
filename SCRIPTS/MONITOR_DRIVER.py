@@ -13,6 +13,69 @@ import numpy as np
 import grads
 import os
 import dateutil.relativedelta as relativedelta
+import joblib
+
+def Download_and_BiasCorrect(date):
+
+ print date
+ #################################################
+ #DOWNLOAD AND PREPROCESS ALL THE REQUIRED DATA
+ #################################################
+
+ #Reprocess available pgf data (historical)
+ #ml.Reprocess_PGF(date,dims)
+
+ #Download and process the gfs analysis data
+ #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+
+ #Download and process the 3b42rt precipitation data
+ #ml.Download_and_Process_3b42RT(date,dims,'standard')
+
+ #Download gfs forecast
+ #ml.Download_and_Process_GFS_forecast(date,dims)
+
+ #Download and process modis NDVI
+ #ml.Download_and_Process_NDVI(date,dims)
+
+ #Download and process the seasonal forecast
+ #ml.Download_and_Process_Seasonal_Forecast(date)
+
+ #################################################
+ #BIAS CORRECT THE DOWNLOADED DATA
+ #################################################
+
+ #Regrid and downscale 3b42rt (ensure it complies with the pgf grid)
+ #ml.Regrid_and_Output_3B42rt(date,dims)
+
+ #Bias correct the 3b42rt precipitation product
+ #ml.BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims)
+
+ #Bias correct the gfs final analysis product
+ #ml.BiasCorrect_and_Output_Forcing_FNL_Analysis
+
+ #Bias correct the gfs forecast
+ #ml.BiasCorrect_and_Output_Forcing_GFS_Forecast
+
+ #Bias correct the seasonal forecast
+ 
+ #Compute different moving averages of the ndvi product
+ ml.Compute_NDVI_moving_average(date,dims)
+
+ #################################################
+ #COMPUTE MONTHLY AND ANNUAL PRODUCTS
+ #################################################
+
+ #ml.Compute_Averages_3b42RT(date,dims,dt)
+
+ #ml.Compute_Averages_PGF(date,dims,dt,'standard')
+
+ #################################################
+ #COMPUTE INDICES
+ #################################################
+
+ #ml.Calculate_and_Output_SPI(date,dims,'rp')
+
+ return
 
 #1. Determine the period that needs to be updated
 
@@ -33,67 +96,21 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(1948,1,1)
-fdate = datetime.datetime(2008,12,31)
+idate = datetime.datetime(2000,1,1)
+fdate = datetime.datetime(2013,7,31)
 date = idate
+dates = []
+#while date <= fdate:
+# dates.append(date)
+# date = date + dt
 
 #SERVER SECTION
 while date <= fdate:
 
- print date
-
- #################################################
- #DOWNLOAD AND PREPROCESS ALL THE REQUIRED DATA
- #################################################
-
- #Reprocess available pgf data (historical)
- ml.Reprocess_PGF(date,dims)
-
- #Download and process the gfs analysis data
- #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
- 
- #Download and process the 3b42rt precipitation data
- ml.Download_and_Process_3b42RT(date,dims,'standard')
-
- #Download gfs forecast
- ml.Download_and_Process_GFS_forecast(date,dims)
-
- #Download and process modis NDVI
- ml.Download_and_Process_NDVI(date,dims)
-
- #Download and process the seasonal forecast
- ml.Download_and_Process_Seasonal_Forecast(date)
-
- #################################################
- #BIAS CORRECT THE DOWNLOADED DATA
- #################################################
-
- #Bias correct the 3b42rt precipitation product
- #ml.BiasCorrect_and_Output_Forcing_3B42RT(date,dims,'st')
-
- #Bias correct the gfs final analysis product
- #ml.BiasCorrect_and_Output_Forcing_FNL_Analysis
-
- #Bias correct the gfs forecast
- #ml.BiasCorrect_and_Output_Forcing_GFS_Forecast
-
- #Bias correct the seasonal forecast
-  
- #################################################
- #COMPUTE MONTHLY AND ANNUAL PRODUCTS
- #################################################
-
- #ml.Compute_Averages_3b42RT(date,dims,dt)
-
- #ml.Compute_Averages_PGF(date,dims,dt,'standard')
-
- #################################################
- #COMPUTE INDICES
- #################################################
- 
- #ml.Calculate_and_Output_SPI(date,dims,'rp')
-
+ Download_and_BiasCorrect(date)
  date = date + dt
+
+#ml.Finalize_NCEP_FNL_Connection()
 
 #################################################
 #RUN THE VIC MODEL
@@ -110,7 +127,7 @@ while date <= fdate:
 #forcing_file = ml.Prepare_VIC_Forcings_Historical(idate,fdate,dims)
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims)
+#ml.Run_VIC(idate,fdate,dims)
 
 
  

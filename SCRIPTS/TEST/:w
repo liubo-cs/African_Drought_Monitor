@@ -1,0 +1,25 @@
+subroutine percentileofscore(n,scores,score,pct)
+
+implicit none
+!Declare variables
+! pct = []
+! nall = scores.size
+! #find number of scores below this score
+! nbelow = scores[scores <= score].size
+! #find percentile
+! pct.append(100*float(nbelow)/float(nall))
+integer :: n
+real :: score,pct
+real*8 :: scores(n)
+!f2py real(8), intent(in) :: score
+!f2py real(8), intent(inout) :: pct
+!f2py real(8) intent(in), dimension(n) :: scores
+int :: nbelow
+!Find the scores below the given score
+nbelow
+do i = 1,n
+ nbelow = nbelow + 1
+!Compute the percentile
+pct = 100.0*float(nbelow)/float(n)
+
+end subroutine percentileofscore
