@@ -341,38 +341,43 @@ def Download_and_Process_3b42RT(date,dims,flag_reprocess):
 def Download_and_Process_GFS_forecast(date,dims):
 
  gfs_hd_root = '../DATA/GFS'
+ dir = '../DATA/GFS/%04d%02d%02d' % (date.year,date.month,date.day)
  idate = date
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2013,1,1):
+ date_tmp = datetime.datetime.today() - relativedelta.relativedelta(years=1)
+ if date < datetime.datetime(date_tmp.year,date_tmp.month,date_tmp.day):
   return
 
- #If the file already exists exit:
- file = 'gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
- netcdf_file = '%s/%s' % (gfs_hd_root,file)
- if os.path.exists(netcdf_file) == True:
-  return
+ #If the directory already exists exit:
+ if os.path.exists(dir) == False:
+  os.system("mkdir %s" % dir)
 
  print_info_to_command_line("Downloading and processing the gfs 7-day forecast")
 
  #Establish connection to 00 forecast
  gds_file = 'http://nomads.ncdc.noaa.gov:80/dods/NCEP_GFS/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_0000_fff' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day)
+ 
  #gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs_hd/gfs_hd%04d%02d%02d/gfs_hd_00z' % (date.year,date.month,date.day)
- ga("sdfopen %s" % gds_file)
+ try:
+  ga("sdfopen %s" % gds_file)
+ except:
+  return
 
- #Create and open access to netcdf file
- nt = 7
- #netcdf_file = 'gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
- #file = '%s/%s' % (gfs_hd_root,netcdf_file)
+ #Define info for the netcdf files
  vars = ['tmax','tmin','prec','wind']
  vars_info = ['daily tmax (K)','daily tmin (K)','daily total precip (mm)','daily mean wind speed (m/s)']
- tstep = 'days'
- fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,idate,tstep,nt)
 
  #Process each day
  t1 = 2
  t2 = 9
+ nt = 7
  for t in xrange(0,nt):
+  
+  file = dir + '/gfs_%04d%02d%02d_daily_%.3fdeg_day%d.nc' % (idate.year,idate.month,idate.day,dims['res'],t+1)
+  #Determine if we skip the time step
+  if os.path.exists(file) == True:
+   continue
  
   #Set region
   ga("set lat -89.5 89.5")
@@ -395,9 +400,22 @@ def Download_and_Process_GFS_forecast(date,dims):
   Grads_Regrid("wind","wind",dims)
 
   #Write to file
+  fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,'days',1)
   for var in vars:
-   data = np.ma.getdata(ga.exp(var))
-   fp.variables[var][t] = data
+   data = np.ma.getdata(ga.exp(var)) 
+   fp.variables[var][0] = data
+  fp.close()
+
+  #Update control file
+  date_ctl = datetime.datetime(2012,8,14) 
+  ndays = (date - date_ctl).days + 1
+  ctl_new = '../DATA/GFS/gfs_daily_0.250deg_day%d.ctl' % (t+1)
+  fp = open(ctl_new,'w')
+  fp.write('dset ^%s%s%s/gfs_%s%s%s_daily_0.250deg_day%d.nc\n' % ('%y4','%m2','%d2','%y4','%m2','%d2',t+1))
+  fp.write('options template\n')
+  fp.write('dtype netcdf\n')
+  fp.write('tdef t %d linear 14aug2012 1dy\n' % ndays)
+  fp.close()
 
   #Update time
   t1 = t1 + 8
