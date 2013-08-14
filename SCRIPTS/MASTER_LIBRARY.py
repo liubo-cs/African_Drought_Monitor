@@ -22,6 +22,7 @@ import dateutil.relativedelta as relativedelta
 #from cython.parallel import prange
 import time
 import random
+import cPickle as pickle
 #grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
@@ -207,6 +208,48 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
 
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
+
+def Download_and_Process_GFS_Historical(date,dims):
+
+ idate = date
+ #If the date is before the product's start date:
+ if date < datetime.datetime(2008,1,1):
+  return
+
+ #If the file already exists exit:
+ file = '../DATA/GFS_GFS_HISTORICAL/GFS_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ if os.path.exists(file) ==True:
+  return
+
+ print_info_to_command_line("Downloading and processing the GFS historical (3,6 hour) product")
+
+ #Create temporary directory
+ os.system("mkdir ../WORKSPACE/GFS")
+
+ #Download date of GFS historical (3,6 hour) product
+ hours = [0,3,6]
+ for hour in hours:
+  os.system("mkdir ../WORKSPACE/GFS/00%d" % hour)
+  dt = datetime.timedelta(hours=6)
+  for i in xrange(0,5):
+   print date
+   http_file = 'http://nomads.ncdc.noaa.gov/data/gfsanl/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_00%d.grb' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day,date.hour,hour)
+   dwncmd = 'wget -nv -P ../WORKSPACE/GFS/00%d %s' % (hour,http_file)
+   #os.system(dwncmd)
+   date = date + dt 
+  date = idate
+  #Create index and control file for the entire period
+  ctl_file = '../WORKSPACE/GFS/00%d/gfsanl_%04d%02d%02d_00.ctl' % (hour,date.year,date.month,date.day)
+  grb_file = '../WORKSPACE/GFS/00%d/gfsanl_3_%04d%02d%s_%s00_00%d.grb'% (hour,date.year,date.month,'%d2','%h2',hour)
+  os.system('perl ../LIBRARIES/grib2ctl.pl %s 1> %s 2> /dev/null' % (grb_file,ctl_file))
+  os.system("sed -i 's/..\/WORKSPACE\/GFS\/00%d\///g' %s" % (hour,ctl_file))
+
+  #Create index file
+  gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+  os.system('%s -0 -i %s' % (gribmap,ctl_file))
+
+ #Remove temporary directory
+ #os.system("rm -rf ../WORKSPACE/GFS")
 
 def Download_and_Process_3b42RT(date,dims,flag_reprocess):
 
@@ -577,6 +620,7 @@ def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,
 
  #Open access to the control file
  ga("xdfopen %s" % ctl_in)
+ #ga.open(ctl_in)
 
  #Determine initial and final time step
  ga('set t 1')
@@ -631,13 +675,14 @@ def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,
 def Calculate_Percentiles(data_clim,data):
 
  pct = np.zeros(data.shape)
+ pct[0,:,:] = float('NaN')
 
  #Iterate through all cells and calculate percentiles
  for i in xrange(0,data.shape[1]):
   #print i
   for j in xrange(0,data.shape[2]):
    if data[0,i,j] == -9.99e+08:
-    pct[0,i,j] = float('NaN')
+    #pct[0,i,j] = float('NaN')
     continue
    data_cell_clim = data_clim[:,i,j]
    data_cell_clim = data_cell_clim[np.isnan(data_cell_clim) == 0]
@@ -647,7 +692,8 @@ def Calculate_Percentiles(data_clim,data):
 
 def Calculate_SPI(data_clim,data):
 
- spi = np.zeros(data.shape)
+ #spi = np.zeros(data.shape)
+ pct = np.zeros(data.shape)
 
  #Iterate through all cells and calculate the SPI values
  for i in range(data.shape[1]):
@@ -655,14 +701,17 @@ def Calculate_SPI(data_clim,data):
   for j in range(data.shape[2]):
    data_clim_cell = data_clim[:,i,j]
    data_clim_cell = data_clim_cell[np.isnan(data_clim_cell) == 0]
-   data_cell = data[:,i,j]
-   pct = []
-   for score in data_cell:
-    pct.append(ss.percentileofscore(data_clim_cell,score,kind='mean')/100.0)
-   pct = np.array(pct)
-   pct[pct > 0.9999] = 0.9999
-   pct[pct < 0.0001] = 0.0001
-   spi[:,i,j] = ss.norm.ppf(pct)
+   score = data[0,i,j]
+   pct[:,i,j] = library_f90.percentileofscore(data_clim_cell,score,random.random())/100.0
+    #pct.append(ss.percentileofscore(data_clim_cell,score,kind='mean')/100.0)
+   #pct = np.array(pct)
+   #pct[pct > 0.9999] = 0.9999
+   #pct[pct < 0.0001] = 0.0001
+   #spi[:,i,j] = ss.norm.ppf(pct)
+
+ pct[pct > 0.9999] = 0.9999
+ pct[pct < 0.0001] = 0.0001
+ spi = ss.norm.ppf(pct)
 
  return spi
 
@@ -716,11 +765,75 @@ def Regrid_and_Output_3B42rt(date,dims):
  ga("close 1")
 
  return
+
+def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
+
+ #define parameters
+ file_out = '../DATA/FNL_ANALYSIS_BC/DAILY/fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ if os.path.exists(file_out) == True:
+  return
+
+ if date < datetime.datetime(2010,1,1):
+  return
+
+ dt = relativedelta.relativedelta(years=1)
+ idate_pgf = date - relativedelta.relativedelta(years=date.year - 2006)#datetime.datetime(1950,date.month,date.day)
+ fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
+ idate_fnl = date - relativedelta.relativedelta(years=date.year - 2010)#datetime.datetime(2001,date.month,date.day)
+ fdate_fnl = date - relativedelta.relativedelta(years=date.year - 2012)#datetime.datetime(2012,date.month,date.day)
+ type = "all"
+
+ #original forcing
+ ctl_fnl = "../DATA/FNL_ANALYSIS/DAILY/fnlanl_daily_0.25deg.ctl"
+ #baseline forcing
+ ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
+
+ #Output data
+ nt = 1
+ tstep = 'days'
+ #vars = ['prec']
+ vars = ["prec","tmax","tmin","wind"]
+ vars_info = ['daily total precip (mm)','daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
+ #Create file
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+
+ for var in vars:
+ 
+  print var
+
+  #Extract the required data
+  print "Extracting pgf data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=10)
+  dt_down = relativedelta.relativedelta(days=10)
+  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type)
+  print "Extracing fnl data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=10)
+  dt_down = relativedelta.relativedelta(days=10)
+  data_fnl_clim = Extract_Data_Period_Average(idate_fnl,fdate_fnl,dt_down,dt_up,dt,ctl_fnl,var,type)
+  print "Extracing fnl data (To correct)"
+  dt_up = relativedelta.relativedelta(days=0)
+  dt_down = relativedelta.relativedelta(days=0)
+  data_fnl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_fnl,var,type)
+
+
+  #CDF match the data
+  print "Matching the daily fnl to the pgf"
+  data_fnl_corrected = CDF_Match(data_pgf_clim,data_fnl_clim,data_fnl)
+
+  #Write to file
+  fp.variables[var][0] = data_fnl_corrected
+
+ #Close file
+ fp.close()
+
+ return
    
 def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
 
  #define parameters
- file_out = '../DATA/3B42RT_BC_SS/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
  if os.path.exists(file_out) == True:
@@ -738,7 +851,7 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
  type = "all"
 
  #original precipitation
- ctl_3b42rt = "../DATA/3B42RT/DAILY/3B42RT_daily_0.25deg.ctl"
+ ctl_3b42rt = "../DATA/3B42RT_RG/DAILY/3B42RT_daily_0.25deg.ctl"
  #baseline precipitation
  ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
 
@@ -775,92 +888,16 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
 
  return
 
-def BiasCorrect_and_Output_Forcing_3B42RT(date,dims,flag_rp):
-
- #define parameters
- file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
-
- #If the file exists then exit (unless we are reprocessing the data)
- if os.path.exists(file_out) == True and flag_rp != 'rp':
-  return
-
- dt = relativedelta.relativedelta(years=1)
- idate_pgf = datetime.datetime(1950,date.month,date.day)
- fdate_pgf = datetime.datetime(2008,date.month,date.day)
- idate_3b42rt = datetime.datetime(2001,date.month,date.day)
- fdate_3b42rt = datetime.datetime(2006,date.month,date.day)
- dt_up = relativedelta.relativedelta(days=0)
- dt_down = relativedelta.relativedelta(days=30)
- var = "prec"
- type = "ave"
- 
- #original precipitation
- ctl_3b42rt = "../DATA/3B42RT/DAILY/3B42RT_daily_0.25deg.ctl"
- #baseline precipitation
- ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
-
- #Extract the required data
- print "Extracting pgf upscaled data (Climatology)"
- data_pgf_upscaled = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type)
- print "Extracing 3b42rt upscaled data (Climatology)"
- data_3b42rt_upscaled = Extract_Data_Period_Average(idate_3b42rt,fdate_3b42rt,dt_down,dt_up,dt,ctl_3b42rt,var,type)
- print "Extracing 3b42rt upscaled data (To correct)"
- data_3b42rt_upscaled = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_3b42rt,var,type)
-
- #CDF match the upscaled data
- print "Matching the 3b42rt n-day average to the pgf"
- data_3b42rt_corrected_upscaled = CDF_Match(data_pgf_upscaled,data_3b42rt_upscaled,data_3b42rt_upscaled)
-
- #Compute the ratio
- ratio = data_3b42rt_corrected_upscaled/data_3b42rt_upscaled
- ratio[np.isnan(ratio) == 1] = 1
- ratio[ratio > 100] = 1
- ratio[ratio < 0] = 1
- 
- #Extract the fine scale data
- print "Extracting 3b4rt daily data"
- dt_down = dt_down/2
- data_3b42rt = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_3b42rt,var,'all')
- data_3b42rt_corrected = ratio*data_3b42rt
-
- #Output data
- nt = 1
- tstep = 'days'
- vars = ['prec']
- vars_info = ['daily total precip (mm) [cdf-matched against pgf]']
- idate = date - dt_down
- fdate = date
- date = idate
- dt = relativedelta.relativedelta(days=1)
- i = 0
- while date <= fdate:
-
-  #Create file
-  file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
-  fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
-
-  #Write to file
-  fp.variables['prec'][0] = data_3b42rt_corrected[i,:,:]
-
-  #Close file
-  fp.close()
-
-  #Update time step
-  date = date + dt
-  i = i + 1
-
- return
-
-def Calculate_and_Output_SPI(date,dims,rp_flag):
+def Calculate_and_Output_SPI(date,dims):
 
  file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  #Precipitation dataset
  ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
  dt = relativedelta.relativedelta(years=1)
- idate = datetime.datetime(1948,date.month,date.day)
- fdate = datetime.datetime(2008,date.month,date.day)
- idate_clim = datetime.datetime(1950,date.month,date.day)
- fdate_clim = datetime.datetime(2008,date.month,date.day)
+ #idate_clim = datetime.datetime(1950,date.month,date.day)
+ #fdate_clim = datetime.datetime(2008,date.month,date.day)
+ idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)#datetime.datetime(1950,date.month,date.day)
+ fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
  idate_tstep = date
  fdate_tstep = date
  var = "prec"
@@ -868,23 +905,32 @@ def Calculate_and_Output_SPI(date,dims,rp_flag):
  type = "ave"
 
  #If the product for today exists then exit
- if os.path.exists(file_out) == True and rp_flag != 'rp':
+ if os.path.exists(file_out) == True:
   return
-
- if rp_flag == 'rp':
-  idate_tstep = idate_clim
 
  spi = []
  spi_months = [1,3,6,12]
  for spi_month in spi_months:
   
+  print "SPI months: %d" % spi_month 
   dt_down = relativedelta.relativedelta(months=spi_month)
 
   #Extract the climatology and the desired data
-  data_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,idate,fdate,dt_down,dt_up,dt,ctl_in,var,type)
-  data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,idate,fdate,dt_down,dt_up,dt,ctl_in,var,type)
+  #If the climatology has already been saved open and if not save it
+  file_climatology = '../DATA/SPI/DAILY_CLIMATOLOGY/%dmonth/%02d%02d_daily_%.3fdeg.pck' % (spi_month,date.month,date.day,dims['res'])
+  if os.path.exists(file_climatology) == True: 
+   print "Loading the climatology data from storage"
+   data_clim = pickle.load(open(file_climatology,"rb"))
+  else:
+   print "Calculating the climatology"
+   data_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,var,type)
+   print "Saving the climatology data to storage"
+   pickle.dump(data_clim,open(file_climatology,'wb'))
+  #Extract the period we are interested in 
+  data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type)
 
   #Calculate SPI
+  print "Calculating the SPI"
   spi.append(Calculate_SPI(data_clim,data))
 
  #Create files and output all the data
@@ -915,6 +961,85 @@ def Calculate_and_Output_SPI(date,dims,rp_flag):
   #Update time step
   date = date + dt
   i = i + 1
+
+ return
+
+def Calculate_and_Output_SM_Percentiles(date,dims):
+
+ #define parameters
+ file_out = '../DATA/VIC_DERIVED/DAILY/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
+ soil_ctl = "../DATA/VIC/INPUT/soil_Africa_0.25deg_calibrated_final.ctl"
+ dt = relativedelta.relativedelta(years=1)
+ dt = relativedelta.relativedelta(years=1)
+ idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)#datetime.datetime(1950,date.month,date.day)
+ fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
+ #idate_clim = datetime.datetime(1950,date.month,date.day)
+ #fdate_clim = datetime.datetime(2008,date.month,date.day)
+ idate_tstep = date
+ fdate_tstep = date
+ dt_up = relativedelta.relativedelta(days=1)
+ dt_down = relativedelta.relativedelta(days=1)
+ type = "all"
+
+ #If the product for today exists then exit
+ if os.path.exists(file_out) == True:
+  return
+
+ #Extract necessary soil information
+ ga("open %s" % soil_ctl)
+ depth1 = ga.exp("depth1")
+ depth2 = ga.exp("depth2")
+ porosity1 = 1 - ga.exp("bulk1")/ga.exp("density1")
+ porosity2 = 1 - ga.exp("bulk2")/ga.exp("density2")
+ satsm1 = 1000.0*depth1*porosity1
+ satsm2 = 1000.0*depth2*porosity1
+ satsm = satsm1 + satsm2
+ ga("close 1")
+
+ #Extract the climatology and the desired data
+ #If the climatology has already been saved open and if not save it
+ file_climatology = '../DATA/VIC_DERIVED/DAILY_CLIMATOLOGY/%02d%02d_daily_%.3fdeg.pck' % (date.month,date.day,dims['res'])
+ if os.path.exists(file_climatology) == True:
+  print "Loading the climatology data from storage"
+  vc_clim = pickle.load(open(file_climatology,"rb"))
+ else:
+  print "Calculating the climatology"
+  sm1_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm1",type)
+  sm2_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm2",type)
+  vc_clim = 100.0*(sm1_clim + sm2_clim)/(satsm)
+
+  print "Saving the climatology data to storage"
+  pickle.dump(vc_clim,open(file_climatology,'wb'))
+
+ #Extract the period we are interested in 
+ dt_up = relativedelta.relativedelta(days=0)
+ dt_down = relativedelta.relativedelta(days=0)
+ sm1 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm1",type)
+ sm2 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm2",type)
+ vc1 = 100.0*sm1/satsm1
+ vc2 = 100.0*sm2/satsm2
+ vc = 100.0*(sm1 + sm2)/(satsm)
+ vc[sm1 < 0] = -9.99e+08
+
+ #Calculate the percentiles
+ print "Calculating the percentiles"
+ vcpct = Calculate_Percentiles(np.ma.getdata(vc_clim),np.ma.getdata(vc))
+
+ #Output data
+ nt = 1
+ tstep = 'days'
+ vars = ['vc1','vc2','vc','vcpct']
+ vars_info = ['Volumetric water content (layer 1)','Volumetric water content (layer 2)','Volumetric water content (layers 1+2)','Volumetric water content percentile (layers 1+2)']
+ #Create file
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+ #Write to file
+ fp.variables['vc1'][0] = vc1
+ fp.variables['vc2'][0] = vc2
+ fp.variables['vc'][0] = vc
+ fp.variables['vcpct'][0] = vcpct
+ #Close file
+ fp.close()
 
  return
 
@@ -969,46 +1094,6 @@ def Calculate_and_Output_NDVI_Percentiles(date,dims):
 
  return
 
-def Fit_Distribution(distribution,data,file_out,dims):
- 
- #Fit distribution
- parameters = np.zeros((5,data.shape[1],data.shape[2]))
- for i in xrange(0,20):#data.shape[1]):
-  for j in xrange(0,20):#data.shape[2]):
-   #print i,j
-   data_cell = data[:,i,j]
-   data_cell = data_cell[np.isnan(data_cell) == 0]
-   if len(data_cell) > 1:
-    parameters[0:3,i,j] = ss.gamma.fit(data[:,i,j])
-    #Draw random sample
-    samp = ss.gamma.rvs(parameters[0,i,j],loc=parameters[1,i,j],scale=parameters[2,i,j],size=1000)
-    #Compute KS value
-    tmp = ss.ks_2samp(data_cell,samp)
-    parameters[3,i,j] = tmp[0]
-    parameters[4,i,j] = tmp[1]
-   else:
-    parameters[:,i,j] = -9.99e+08
-
- #Create and open access to netcdf file
- nt = 1
- vars = ['alpha','loc','beta','ks','pval']
- vars_info = ['alpha','loc','beta','ks statistic','p-value']
- tstep = 'days'
- date = datetime.datetime(1900,1,1)
- fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
-
- #Place parameter values
- fp.variables['alpha'][0] = parameters[0,:,:]
- fp.variables['loc'][0] = parameters[1,:,:]
- fp.variables['beta'][0] = parameters[2,:,:]
- fp.variables['ks'][0] = parameters[3,:,:]
- fp.variables['pval'][0] = parameters[4,:,:]
-
- #Close file
- fp.close()
- 
- return
-
 def datetime2gradstime(date):
 
  #Convert datetime to grads time
@@ -1049,7 +1134,7 @@ def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
    t2 = datetime2gradstime(fdate)
 
    #Perform operation
-   ga("data = %s(%s,time=%s,time=%s)" % (type,var,t1,t2))
+   ga("data = %s(maskout(%s,%s),time=%s,time=%s)" % (type,var,var,t1,t2))
 
    #Write to file
    data = np.ma.getdata(ga.exp("data"))
@@ -1063,7 +1148,7 @@ def Download_and_Process_Seasonal_Forecast(date):
  dir0 = '../DATA/SEASONAL_FORECAST/%04d%02d' % (date.year,date.month)
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2013,1,1):
+ if date < datetime.datetime(2012,1,1):
   return
 
  #If the directory already exists exit
@@ -1170,9 +1255,9 @@ def Reprocess_PGF(date,dims):
 
  return
 
-def Compute_Averages_3b42RT(date,dims,dt):
+def Compute_Averages_3b42RT_BC(date,dims,dt):
 
- ctl_in = "../DATA/3B42RT/DAILY/3B42RT_daily_0.25deg.ctl"
+ ctl_in = "../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl"
 
  #Check for new month
  ndate = date + dt
@@ -1186,7 +1271,7 @@ def Compute_Averages_3b42RT(date,dims,dt):
   return
 
  #If the file already exists exit:
- file_out = "../DATA/3B42RT/MONTHLY/3B42RT_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
+ file_out = "../DATA/3B42RT_BC/MONTHLY/3B42RT_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
  if os.path.exists(file_out) == False:
 
   #Comput Monthly Average
@@ -1200,7 +1285,7 @@ def Compute_Averages_3b42RT(date,dims,dt):
  fdate = date
 
  #If the file already exists exit:
- file_out = "../DATA/3B42RT/YEARLY/3B42RT_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
+ file_out = "../DATA/3B42RT_BC/YEARLY/3B42RT_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
  if os.path.exists(file_out) == False:
 
   #Compute Annual Average

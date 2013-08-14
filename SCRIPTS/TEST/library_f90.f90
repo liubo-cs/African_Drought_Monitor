@@ -3,24 +3,39 @@ subroutine percentileofscore(scores,n,score,rnd,pct)
 implicit none
 !Declare variables
 real*8 :: scores(n)
-real*8 :: score,pct,rnd
-integer :: n,i,nstrict,nweak,nrnd
+real*8 :: score,pct,rnd,pct_weak,pct_strict
+integer :: n,i,nstrict,nweak,nrnd,countn
 !f2py intent(in) :: scores,score,rnd
 !f2py intent(hide) :: n
 !f2py intent(out) :: pct
 !Find the scores below the given score
 nweak = 0
 nstrict = 0
+countn = 0
 do i = 1,n
- if (score .ge. scores(i)) nweak = nweak + 1
- if (score .gt. scores(i)) nstrict = nstrict + 1
+ if (score .eq. scores(i)) then
+  nweak = nweak + 1
+  if (countn .eq. 0) nstrict = nstrict + 1
+  countn = countn + 1
+ endif
+ if (score .gt. scores(i)) then
+  nweak = nweak + 1 
+  nstrict = nstrict + 1
+ endif
 enddo
+!Compute both percentiles
+pct_weak = 100.0*float(nweak-1)/float(n-1)
+pct_strict = 100.0*float(nstrict-1)/float(n-1)
+
+
 !Compute the random percentile between the limits
-nrnd = nstrict + rnd*(nweak - nstrict)
+pct = pct_strict + rnd*(pct_weak - pct_strict)
+!nrnd = nstrict + rnd*(nweak - nstrict)
 
 !Compute the percentile
 !pct = 100.0*(float(nweak+nstrict)/float(2*n))
-pct = 100.0*(float(nrnd)/float(n))
+!pct = 100.0*(float(nrnd)/float(n))
+!print*,nweak,nstrict,rnd,n,nrnd
 
 end subroutine percentileofscore
 

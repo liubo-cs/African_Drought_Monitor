@@ -13,7 +13,7 @@ import numpy as np
 import grads
 import os
 import dateutil.relativedelta as relativedelta
-import joblib
+import time
 
 def Download_and_BiasCorrect(date):
 
@@ -25,8 +25,11 @@ def Download_and_BiasCorrect(date):
  #Reprocess available pgf data (historical)
  #ml.Reprocess_PGF(date,dims)
 
- #Download and process the gfs analysis data
+ #Download and process the gfs final analysis data
  #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+
+ #Download gfs analysis data
+ #ml.Download_and_Process_GFS_Historical(date,dims)
 
  #Download and process the 3b42rt precipitation data
  #ml.Download_and_Process_3b42RT(date,dims,'standard')
@@ -51,7 +54,7 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims)
 
  #Bias correct the gfs final analysis product
- #ml.BiasCorrect_and_Output_Forcing_FNL_Analysis
+ ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
  #ml.BiasCorrect_and_Output_Forcing_GFS_Forecast
@@ -65,7 +68,7 @@ def Download_and_BiasCorrect(date):
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
  #################################################
 
- #ml.Compute_Averages_3b42RT(date,dims,dt)
+ #ml.Compute_Averages_3b42RT_BC(date,dims,dt)
 
  #ml.Compute_Averages_PGF(date,dims,dt,'standard')
 
@@ -73,9 +76,11 @@ def Download_and_BiasCorrect(date):
  #COMPUTE INDICES
  #################################################
 
- #ml.Calculate_and_Output_SPI(date,dims,'rp')
+ #ml.Calculate_and_Output_SPI(date,dims)
 
- ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
+ #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
+
+ #ml.Calculate_and_Output_SM_Percentiles(date,dims)
 
  return
 
@@ -98,8 +103,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2000,1,1)
-fdate = datetime.datetime(2013,7,31)
+idate = datetime.datetime(2010,1,1)
+fdate = datetime.datetime(2012,12,31)
 date = idate
 dates = []
 #while date <= fdate:
@@ -107,10 +112,13 @@ dates = []
 # date = date + dt
 
 #SERVER SECTION
+tic = time.clock()
 while date <= fdate:
 
  Download_and_BiasCorrect(date)
  date = date + dt
+toc = time.clock()
+print toc - tic
 
 #ml.Finalize_NCEP_FNL_Connection()
 
