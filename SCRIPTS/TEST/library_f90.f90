@@ -26,7 +26,8 @@ enddo
 !Compute both percentiles
 pct_weak = 100.0*float(nweak-1)/float(n-1)
 pct_strict = 100.0*float(nstrict-1)/float(n-1)
-
+if (pct_weak .lt. 0) pct_weak = 0.0
+if (pct_strict .lt. 0) pct_strict = 0.0
 
 !Compute the random percentile between the limits
 pct = pct_strict + rnd*(pct_weak - pct_strict)

@@ -54,10 +54,10 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims)
 
  #Bias correct the gfs final analysis product
- ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
+ #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- #ml.BiasCorrect_and_Output_Forcing_GFS_Forecast
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
 
  #Bias correct the seasonal forecast
  
@@ -103,8 +103,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2010,1,1)
-fdate = datetime.datetime(2012,12,31)
+idate = datetime.datetime(2013,7,31)
+fdate = datetime.datetime(2013,7,31)
 date = idate
 dates = []
 #while date <= fdate:

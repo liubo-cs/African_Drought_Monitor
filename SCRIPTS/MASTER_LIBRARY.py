@@ -616,10 +616,10 @@ def Compute_NDVI_moving_average(date,dims):
  #Close access to new file
  fp.close()
 
-def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,type):
+def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,type,open_type):
 
  #Open access to the control file
- ga("xdfopen %s" % ctl_in)
+ ga("%s %s" % (open_type,ctl_in))
  #ga.open(ctl_in)
 
  #Determine initial and final time step
@@ -766,14 +766,78 @@ def Regrid_and_Output_3B42rt(date,dims):
 
  return
 
+def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
+
+ #define parameters
+ file_out = '../DATA/GFS_BC/gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ #if os.path.exists(file_out) == True:
+ # return
+
+ if date < datetime.datetime(2013,7,31):
+  return
+
+ dt = relativedelta.relativedelta(years=1)
+ idate_pgf = date - relativedelta.relativedelta(years=date.year - 2006)#datetime.datetime(1950,date.month,date.day)
+ fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
+ idate_fnl = date - relativedelta.relativedelta(years=date.year - 2010)#datetime.datetime(2001,date.month,date.day)
+ fdate_fnl = date - relativedelta.relativedelta(years=date.year - 2012)#datetime.datetime(2012,date.month,date.day)
+ type = "all"
+
+ #original forcing
+ ctl_fnl = "../DATA/FNL_ANALYSIS/DAILY/fnlanl_daily_0.25deg.ctl"
+ #baseline forcing
+ ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
+ #gfs forecast
+ nc_gfs = '../DATA/GFS/gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+
+ #Output data
+ nt = 7
+ tstep = 'days'
+ vars = ["prec","tmax","tmin","wind"]
+ vars_info = ['daily total precip (mm)','daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
+ #Create file
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+
+ for var in vars:
+
+  print var
+
+  #Extract the required data
+  print "Extracting pgf data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=10)
+  dt_down = relativedelta.relativedelta(days=10)
+  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
+  print "Extracing fnl data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=10)
+  dt_down = relativedelta.relativedelta(days=10)
+  data_fnl_clim = Extract_Data_Period_Average(idate_fnl,fdate_fnl,dt_down,dt_up,dt,ctl_fnl,var,type,'xdfopen')
+  print "Extracing gfs data (To correct)"
+  dt_up = relativedelta.relativedelta(days=0)
+  dt_down = relativedelta.relativedelta(days=0)
+  data_gfs = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,nc_gfs,var,type,'sdfopen')
+
+  #CDF match the data
+  print "Matching the daily gfs to the pgf"
+  data_fnl_corrected = CDF_Match(data_pgf_clim,data_fnl_clim,data_gfs)
+
+  #Write to file
+  fp.variables[var][0] = data_fnl_corrected
+
+ #Close file
+ fp.close()
+
+ return
+
 def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
 
  #define parameters
  file_out = '../DATA/FNL_ANALYSIS_BC/DAILY/fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
- if os.path.exists(file_out) == True:
-  return
+ #if os.path.exists(file_out) == True:
+ # return
 
  if date < datetime.datetime(2010,1,1):
   return
@@ -807,15 +871,15 @@ def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
   print "Extracting pgf data (Climatology)"
   dt_up = relativedelta.relativedelta(days=10)
   dt_down = relativedelta.relativedelta(days=10)
-  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type)
+  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
   print "Extracing fnl data (Climatology)"
   dt_up = relativedelta.relativedelta(days=10)
   dt_down = relativedelta.relativedelta(days=10)
-  data_fnl_clim = Extract_Data_Period_Average(idate_fnl,fdate_fnl,dt_down,dt_up,dt,ctl_fnl,var,type)
+  data_fnl_clim = Extract_Data_Period_Average(idate_fnl,fdate_fnl,dt_down,dt_up,dt,ctl_fnl,var,type,'xdfopen')
   print "Extracing fnl data (To correct)"
   dt_up = relativedelta.relativedelta(days=0)
   dt_down = relativedelta.relativedelta(days=0)
-  data_fnl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_fnl,var,type)
+  data_fnl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_fnl,var,type,'xdfopen')
 
 
   #CDF match the data
