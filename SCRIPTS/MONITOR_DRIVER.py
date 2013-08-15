@@ -28,14 +28,11 @@ def Download_and_BiasCorrect(date):
  #Download and process the gfs final analysis data
  #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
 
- #Download gfs analysis data
- #ml.Download_and_Process_GFS_Historical(date,dims)
-
  #Download and process the 3b42rt precipitation data
  #ml.Download_and_Process_3b42RT(date,dims,'standard')
 
  #Download gfs forecast
- ml.Download_and_Process_GFS_forecast(date,dims)
+ #ml.Download_and_Process_GFS_forecast(date,dims)
 
  #Download and process modis NDVI
  #ml.Download_and_Process_NDVI(date,dims)
@@ -57,20 +54,12 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- #ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
 
  #Bias correct the seasonal forecast
  
  #Compute different moving averages of the ndvi product
  #ml.Compute_NDVI_moving_average(date,dims)
-
- #################################################
- #COMPUTE MONTHLY AND ANNUAL PRODUCTS
- #################################################
-
- #ml.Compute_Averages_3b42RT_BC(date,dims,dt)
-
- #ml.Compute_Averages_PGF(date,dims,dt,'standard')
 
  #################################################
  #COMPUTE INDICES
@@ -81,6 +70,16 @@ def Download_and_BiasCorrect(date):
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
+
+ #################################################
+ #COMPUTE MONTHLY AND ANNUAL PRODUCTS
+ #################################################
+
+ #ml.Compute_Averages_3b42RT_BC(date,dims,dt)
+
+ #ml.Compute_Averages_PGF(date,dims,dt,'standard')
+
+ #ml.Compute_Averages_SM_Percentiles(date,dims,dt)
 
  return
 
@@ -103,7 +102,7 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2012,1,1)
+idate = datetime.datetime(2012,8,14)
 fdate = datetime.datetime(2013,8,10)
 date = idate
 dates = []

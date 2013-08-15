@@ -209,48 +209,6 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
 
-def Download_and_Process_GFS_Historical(date,dims):
-
- idate = date
- #If the date is before the product's start date:
- if date < datetime.datetime(2008,1,1):
-  return
-
- #If the file already exists exit:
- file = '../DATA/GFS_GFS_HISTORICAL/GFS_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
- if os.path.exists(file) ==True:
-  return
-
- print_info_to_command_line("Downloading and processing the GFS historical (3,6 hour) product")
-
- #Create temporary directory
- os.system("mkdir ../WORKSPACE/GFS")
-
- #Download date of GFS historical (3,6 hour) product
- hours = [0,3,6]
- for hour in hours:
-  os.system("mkdir ../WORKSPACE/GFS/00%d" % hour)
-  dt = datetime.timedelta(hours=6)
-  for i in xrange(0,5):
-   print date
-   http_file = 'http://nomads.ncdc.noaa.gov/data/gfsanl/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_00%d.grb' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day,date.hour,hour)
-   dwncmd = 'wget -nv -P ../WORKSPACE/GFS/00%d %s' % (hour,http_file)
-   #os.system(dwncmd)
-   date = date + dt 
-  date = idate
-  #Create index and control file for the entire period
-  ctl_file = '../WORKSPACE/GFS/00%d/gfsanl_%04d%02d%02d_00.ctl' % (hour,date.year,date.month,date.day)
-  grb_file = '../WORKSPACE/GFS/00%d/gfsanl_3_%04d%02d%s_%s00_00%d.grb'% (hour,date.year,date.month,'%d2','%h2',hour)
-  os.system('perl ../LIBRARIES/grib2ctl.pl %s 1> %s 2> /dev/null' % (grb_file,ctl_file))
-  os.system("sed -i 's/..\/WORKSPACE\/GFS\/00%d\///g' %s" % (hour,ctl_file))
-
-  #Create index file
-  gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
-  os.system('%s -0 -i %s' % (gribmap,ctl_file))
-
- #Remove temporary directory
- #os.system("rm -rf ../WORKSPACE/GFS")
-
 def Download_and_Process_3b42RT(date,dims,flag_reprocess):
 
  workspace = '../WORKSPACE'
@@ -647,19 +605,22 @@ def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,
  fdate_all = gradstime2datetime(ga.exp(var).grid.time[0])
 
  date = idate_out
+ count = 0
  while date <= fdate_out:
 
   #print date
   date1 = date - dt_down
-  if date1 < idate_all:
-   date1 = idate_all
-  if date1 > fdate_all:
-   date1 = fdate_all
   date2 = date + dt_up
-  if date2 > fdate_all:
+  if date1 < idate_all and date2 < idate_all:
+   date = date + dt
+   continue
+  if date1 < idate_all and date2 >= idate_all:
+   date1 = idate_all
+  if date1 > fdate_all and date2 > fdate_all:
+   date = date +dt
+   continue
+  if date1 <= fdate_all and date2 > fdate_all:
    date2 = fdate_all
-  if date2 < idate_all:
-   date2 = idate_all
   t1 = datetime2gradstime(date1)
   t2 = datetime2gradstime(date2)
 
@@ -677,7 +638,8 @@ def Extract_Data_Period_Average(idate_out,fdate_out,dt_down,dt_up,dt,ctl_in,var,
    tmp = np.reshape(tmp,(1,tmp.shape[0],tmp.shape[1]))
 
   #Append data
-  if date == idate_out:
+  if count == 0:#date == idate_out:
+   count = 1
    data = tmp
   else:
    data = np.vstack((data,tmp))
@@ -786,65 +748,88 @@ def Regrid_and_Output_3B42rt(date,dims):
 
 def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
 
- #define parameters
- file_out = '../DATA/GFS_BC/gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ dir = '../DATA/GFS_BC/%04d%02d%02d' % (date.year,date.month,date.day)
 
- #If the file exists then exit (unless we are reprocessing the data)
- #if os.path.exists(file_out) == True:
- # return
-
- if date < datetime.datetime(2013,7,31):
+ #If the date is before the product's start date:
+ if date < datetime.datetime(2012,8,14):
   return
 
+ #If the directory already exists exit:
+ if os.path.exists(dir) == False:
+  os.system("mkdir %s" % dir)
+
  dt = relativedelta.relativedelta(years=1)
- idate_pgf = date - relativedelta.relativedelta(years=date.year - 2006)#datetime.datetime(1950,date.month,date.day)
- fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
- idate_fnl = date - relativedelta.relativedelta(years=date.year - 2010)#datetime.datetime(2001,date.month,date.day)
- fdate_fnl = date - relativedelta.relativedelta(years=date.year - 2012)#datetime.datetime(2012,date.month,date.day)
  type = "all"
 
- #original forcing
- ctl_fnl = "../DATA/FNL_ANALYSIS/DAILY/fnlanl_daily_0.25deg.ctl"
  #baseline forcing
  ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
- #gfs forecast
- nc_gfs = '../DATA/GFS/gfs_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
- #Output data
- nt = 7
- tstep = 'days'
  vars = ["prec","tmax","tmin","wind"]
  vars_info = ['daily total precip (mm)','daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
- #Create file
- fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+ idate = date
+ for t in range(7):
 
- for var in vars:
+  print date
+   
+  #Set info for current day
+  idate_pgf = date - relativedelta.relativedelta(years=date.year - 2001)#datetime.datetime(1950,date.month,date.day)
+  fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
+  idate_gfs = idate - relativedelta.relativedelta(years=date.year - 2012)#datetime.datetime(2001,date.month,date.day)
+  fdate_gfs = idate - relativedelta.relativedelta(years=date.year - 2013)#datetime.datetime(2012,date.month,date.day)
 
-  print var
+  #original forcing
+  ctl_gfs = "../DATA/GFS/gfs_daily_0.250deg_day%d.ctl" % (t+1)
+  file = dir + '/gfs_%04d%02d%02d_daily_%.3fdeg_day%d.nc' % (idate.year,idate.month,idate.day,dims['res'],t+1)
 
-  #Extract the required data
-  print "Extracting pgf data (Climatology)"
-  dt_up = relativedelta.relativedelta(days=10)
-  dt_down = relativedelta.relativedelta(days=10)
-  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
-  print "Extracing fnl data (Climatology)"
-  dt_up = relativedelta.relativedelta(days=10)
-  dt_down = relativedelta.relativedelta(days=10)
-  data_fnl_clim = Extract_Data_Period_Average(idate_fnl,fdate_fnl,dt_down,dt_up,dt,ctl_fnl,var,type,'xdfopen')
-  print "Extracing gfs data (To correct)"
-  dt_up = relativedelta.relativedelta(days=0)
-  dt_down = relativedelta.relativedelta(days=0)
-  data_gfs = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,nc_gfs,var,type,'sdfopen')
+  #Determine if we skip the time step
+  if os.path.exists(file) == True:
+   date = date + datetime.timedelta(days=1)
+   continue
 
-  #CDF match the data
-  print "Matching the daily gfs to the pgf"
-  data_fnl_corrected = CDF_Match(data_pgf_clim,data_fnl_clim,data_gfs)
+  #Create file
+  fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,'days',1)
 
-  #Write to file
-  fp.variables[var][0] = data_fnl_corrected
+  for var in vars:
 
- #Close file
- fp.close()
+   print var
+
+   #Extract the required data
+   print "Extracing gfs data (Climatology)"
+   dt_up = relativedelta.relativedelta(days=20)
+   dt_down = relativedelta.relativedelta(days=20)
+   data_gfs_clim = Extract_Data_Period_Average(idate_gfs,fdate_gfs,dt_down,dt_up,dt,ctl_gfs,var,type,'xdfopen')
+   print "Extracting pgf data (Climatology)"
+   dt_up = relativedelta.relativedelta(days=3)
+   dt_down = relativedelta.relativedelta(days=3)
+   data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
+   print "Extracing gfs data (To correct)"
+   dt_up = relativedelta.relativedelta(days=0)
+   dt_down = relativedelta.relativedelta(days=0)
+   data_gfs = Extract_Data_Period_Average(idate,idate,dt_down,dt_up,dt,ctl_gfs,var,type,'xdfopen')
+
+   #CDF match the data
+   print "Matching the daily gfs to the pgf"
+   data_gfs_corrected = CDF_Match(data_pgf_clim,data_gfs_clim,data_gfs)
+
+   #Write to file
+   fp.variables[var][0] = data_gfs_corrected
+
+  #Close file
+  fp.close()
+
+  #Update control file
+  date_ctl = datetime.datetime(2012,8,14)
+  ndays = (idate - date_ctl).days + 1
+  ctl_new = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
+  fp = open(ctl_new,'w')
+  fp.write('dset ^%s%s%s/gfs_%s%s%s_daily_0.250deg_day%d.nc\n' % ('%y4','%m2','%d2','%y4','%m2','%d2',t+1))
+  fp.write('options template\n')
+  fp.write('dtype netcdf\n')
+  fp.write('tdef t %d linear 14aug2012 1dy\n' % ndays)
+  fp.close()
+
+  #Update the time step
+  date = date + datetime.timedelta(days=1)
 
  return
 
@@ -1053,7 +1038,6 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
  ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
  soil_ctl = "../DATA/VIC/INPUT/soil_Africa_0.25deg_calibrated_final.ctl"
  dt = relativedelta.relativedelta(years=1)
- dt = relativedelta.relativedelta(years=1)
  idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)#datetime.datetime(1950,date.month,date.day)
  fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
  #idate_clim = datetime.datetime(1950,date.month,date.day)
@@ -1087,8 +1071,8 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
   vc_clim = pickle.load(open(file_climatology,"rb"))
  else:
   print "Calculating the climatology"
-  sm1_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm1",type)
-  sm2_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm2",type)
+  sm1_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm1",type,"open")
+  sm2_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,"sm2",type,"open")
   vc_clim = 100.0*(sm1_clim + sm2_clim)/(satsm)
 
   print "Saving the climatology data to storage"
@@ -1097,8 +1081,8 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
  #Extract the period we are interested in 
  dt_up = relativedelta.relativedelta(days=0)
  dt_down = relativedelta.relativedelta(days=0)
- sm1 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm1",type)
- sm2 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm2",type)
+ sm1 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm1",type,"open")
+ sm2 = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,"sm2",type,"open")
  vc1 = 100.0*sm1/satsm1
  vc2 = 100.0*sm2/satsm2
  vc = 100.0*(sm1 + sm2)/(satsm)
@@ -1334,6 +1318,44 @@ def Reprocess_PGF(date,dims):
  ga("close 3")
  ga("close 2")
  ga("close 1")
+
+ return
+
+def Compute_Averages_SM_Percentiles(date,dims,dt):
+ 
+ ctl_in = '../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl'
+
+ #Check for new month
+ ndate = date + dt
+ idate = datetime.datetime(date.year,date.month,1)
+ fdate = date
+ if date.month == ndate.month:
+  return
+
+ #Determine if the date is before the beginning of the product
+ if date < datetime.datetime(1950,1,1):
+  return
+
+ #If the file already exists exit:
+ file_out = "../DATA/VIC_DERIVED/MONTHLY/vic_derived_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
+ if os.path.exists(file_out) == False:
+
+  #Comput Monthly Average
+  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+
+ #Check for new year
+ if date.year == ndate.year:
+  return
+
+ idate = datetime.datetime(date.year,1,1)
+ fdate = date
+
+ #If the file already exists exit:
+ file_out = "../DATA/VIC_DERIVED/YEARLY/vic_derived_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
+ if os.path.exists(file_out) == False:
+
+  #Compute Annual Average
+  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
 
  return
 
