@@ -1,0 +1,21 @@
+&Prep_Routing_nml
+basin='AFR',
+outdir='/home/freeze/water_monitor/African_Drought_Monitor/SOURCE/Grid_Routing/GIS/AFR_900s/AFR_900s',
+maskfile='/home/freeze/water_monitor/African_Drought_Monitor/SOURCE/Grid_Routing/GIS/AFR_900s/AFR_VIC_Mask.bin',
+nx=296 ,
+ny=292 ,
+xmin= -18.875 ,
+ymin= -34.875 ,
+xres= 0.25,
+yres= 0.25,
+mnx=296,
+mny=292,
+vnstr=2,
+vstr=3,
+soid=1,
+sid=1,
+mxmin=-18.875,
+mymin=-34.875,
+mxres=0.25,
+myres=0.25 /
+

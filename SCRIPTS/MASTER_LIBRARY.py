@@ -209,6 +209,81 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
 
+def Download_and_Process_GFS_Analysis(date,dims):
+
+ gfs_anl_root = '../DATA/GFS_ANL/DAILY'
+ workspace = '../WORKSPACE'
+ #If the data is before the product's start date return:
+ if date < datetime.datetime(2008,1,1):
+  return
+
+ #If the file already exists exit:
+ file = 'GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ netcdf_file = '%s/%s' % (gfs_anl_root,file)
+ if os.path.exists(netcdf_file) == True:
+  return
+ 
+ print_info_to_command_line("Downloading and processing the NCEP GFS analysis")
+
+ #Download GFS Analysis for the entire day
+ idate = date
+ dt = datetime.timedelta(hours=6)
+ for i in xrange(0,4):
+  ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day,date.hour)
+  cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
+  os.system(cmd)
+  date = date + dt
+
+ #Create index and control file for the entire period
+ ctl_file = 'gfsanl_3_%04d%02d%02d_0000_000.ctl' % (idate.year,idate.month,idate.day)
+ grb_file = 'gfsanl_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
+ os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
+
+ #Create index file
+ gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+ os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
+
+ #Open access to the file
+ ga("open %s/%s" % (workspace,ctl_file))
+
+ #Set region
+ ga("set lat -89.5 89.5")
+ ga("set lon -179.5 179.5")
+
+ #Define the output variables
+ ga("tmax = max(tmp2m,t=1,t=4)")
+ ga("tmin = min(tmp2m,t=1,t=4)")
+ ga("wind = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
+
+ #Set to new region
+ ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+ ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+
+ #Regrid to 1/4 degree
+ Grads_Regrid("tmax","tmax",dims)
+ Grads_Regrid("tmin","tmin",dims)
+ Grads_Regrid("wind","wind",dims)
+
+ #Create and open access to netcdf file
+ vars = ['tmax','tmin','wind']
+ vars_info = ['daily tmax (K)','daily tmin (K)','daily mean wind speed (m/s)']
+ nt = 1
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,idate,tstep,nt)
+
+ #Write to file
+ for var in vars:
+  data = np.ma.getdata(ga.exp(var))
+  fp.variables[var][0] = data
+
+ #Close access to all files in grads
+ ga("close 1")
+
+ #Remove files from the workspace
+ os.system('rm -f %s/gfsanl_3*' % workspace)
+
+ return
+
 def Download_and_Process_3b42RT(date,dims,flag_reprocess):
 
  workspace = '../WORKSPACE'
@@ -1681,3 +1756,20 @@ def Extract_VIC_Baseflow_and_Runoff(date,dims):
 
  return
 
+def Run_Routing(idate,fdate,dims):
+
+ #If beginning of record start with no initial state
+ ist = 1
+ if idate == datetime.datetime(1948,1,1):
+  ist = -1
+ iyear = idate.year
+ imonth = idate.month
+ iday = idate.day
+ nt = (fdate - idate).days + 1
+ output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
+ #Run the model
+ os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d' % (iyear,imonth,iday,nt,ist))
+ #Move the routed flow its resting place
+ os.system('mv ../SOURCE/Grid_Routing/Workspace/AFR_900s/Flow/* %s/.' % output_dir)
+
+ return

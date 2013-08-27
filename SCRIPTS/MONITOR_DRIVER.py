@@ -40,6 +40,9 @@ def Download_and_BiasCorrect(date):
  #Download and process the seasonal forecast
  #ml.Download_and_Process_Seasonal_Forecast(date)
 
+ #Download and process the gfs analysis data
+ #ml.Download_and_Process_GFS_Analysis(date,dims)
+
  #################################################
  #BIAS CORRECT THE DOWNLOADED DATA
  #################################################
@@ -79,7 +82,7 @@ def Download_and_BiasCorrect(date):
 
  #ml.Compute_Averages_PGF(date,dims,dt,'standard')
 
- ml.Compute_Averages_SM_Percentiles(date,dims,dt)
+ #ml.Compute_Averages_SM_Percentiles(date,dims,dt)
 
  #ml.Compute_Averages_SPI(date,dims,dt)
 
@@ -108,8 +111,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2000,1,1)
-fdate = datetime.datetime(2008,12,31)
+idate = datetime.datetime(1948,1,1)
+fdate = datetime.datetime(1948,2,1)
 date = idate
 dates = []
 #while date <= fdate:
@@ -149,6 +152,10 @@ print toc - tic
 #################################################
 #RUN ROUTING MODEL
 #################################################
+
+#Run Josh's model
+
+ml.Run_Routing(idate,fdate,dims)
 '''
 #################################################
 #FIT DISTR
