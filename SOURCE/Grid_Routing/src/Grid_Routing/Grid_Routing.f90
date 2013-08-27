@@ -116,8 +116,8 @@ allocate(stmR(nx,ny)) !Masked out initialization of stream state
 allocate(flw(nx,ny))  !flow variable
 allocate(flwR(nx,ny)) !Initialized flow variable
 
-stmR = -999.9
-flwR = -999.9
+stmR = -9.99e+08!-999.9
+flwR = -9.99e+08!-999.9
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(j,pg,gid,ig,trnf,k)
 !$OMP DO SCHEDULE(DYNAMIC,HUNK)
 do i = 1,ny
