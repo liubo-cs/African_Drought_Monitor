@@ -54,7 +54,7 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
+ #ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
 
  #Bias correct the seasonal forecast
  
@@ -79,17 +79,23 @@ def Download_and_BiasCorrect(date):
 
  #ml.Compute_Averages_PGF(date,dims,dt,'standard')
 
- #ml.Compute_Averages_SM_Percentiles(date,dims,dt)
+ ml.Compute_Averages_SM_Percentiles(date,dims,dt)
+
+ #ml.Compute_Averages_SPI(date,dims,dt)
+
+
+ #1. Determine the period that needs to be updated
+
+ #2. Download all the relevant data
+ 
+ #3. Process all the relevant data
+
+ #4. Run all the relevant models
+
+ #Create the runoff files for routing
+ #ml.Extract_VIC_Baseflow_and_Runoff(date,dims)
 
  return
-
-#1. Determine the period that needs to be updated
-
-#2. Download all the relevant data
-
-#3. Process all the relevant data
-
-#4. Run all the relevant models
 
 dims = {}
 dims['minlat'] = -34.875000 #-89.8750
@@ -102,8 +108,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2012,8,14)
-fdate = datetime.datetime(2013,8,10)
+idate = datetime.datetime(2000,1,1)
+fdate = datetime.datetime(2008,12,31)
 date = idate
 dates = []
 #while date <= fdate:

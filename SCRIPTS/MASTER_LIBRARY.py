@@ -1321,6 +1321,44 @@ def Reprocess_PGF(date,dims):
 
  return
 
+def Compute_Averages_SPI(date,dims,dt):
+
+ ctl_in = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
+
+ #Check for new month
+ ndate = date + dt
+ idate = datetime.datetime(date.year,date.month,1)
+ fdate = date
+ if date.month == ndate.month:
+  return
+
+ #Determine if the date is before the beginning of the product
+ if date < datetime.datetime(1950,1,1):
+  return
+
+ #If the file already exists exit:
+ file_out = "../DATA/SPI/MONTHLY/spi_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
+ if os.path.exists(file_out) == False:
+
+  #Comput Monthly Average
+  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+
+ #Check for new year
+ if date.year == ndate.year:
+  return
+
+ idate = datetime.datetime(date.year,1,1)
+ fdate = date
+
+ #If the file already exists exit:
+ file_out = "../DATA/SPI/YEARLY/spi_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
+ if os.path.exists(file_out) == False:
+
+  #Compute Annual Average
+  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
+
+ return
+
 def Compute_Averages_SM_Percentiles(date,dims,dt):
  
  ctl_in = '../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl'
@@ -1605,3 +1643,41 @@ def Run_VIC(idate,fdate,dims):
   idate_tmp = fdate_tmp + datetime.timedelta(days=1)
 
  return
+
+def Extract_VIC_Baseflow_and_Runoff(date,dims):
+
+ ctl_file = '../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl'
+ idate = datetime.datetime(1950,1,1)
+ if date < idate:
+  return
+ file = '../DATA/VIC/OUTPUT/DAILY/RUNOFF/runoff_%04d%02d%02d_daily_0.250deg.nc' % (date.year,date.month,date.day)
+ if os.path.exists(file):
+  return
+
+ #Open file 
+ ga("open %s" % ctl_file)
+ 
+ #Set time
+ ga("set time %s" % datetime2gradstime(date))
+
+ #Extract data
+ data = ga.exp("baseflow") + ga.exp("runoff")
+
+ #Write data
+ vars = ['runoff']
+ vars_info = ['runoff (mm/day)']
+ nt = 1
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,tstep,nt)
+
+ #Write to file
+ fp.variables['runoff'][0] = data
+
+ #Close access to all files in grads
+ ga("close 1")
+
+ #Finalize and close NETCDF file
+ fp.close()
+
+ return
+
