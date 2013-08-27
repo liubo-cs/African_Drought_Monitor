@@ -157,7 +157,7 @@ if(ist > 0)then
     write(strd,'(i2)')d
   endif
   write(outfile,'(a,a,i4,a2,a2,a)')trim(statedir),'/State_',y,zeroMonth(m),strd,'.bin'
-  open(99,file=trim(outfile), access='direct',status='old', form='unformatted',recl=nx*ny)
+  open(99,file=trim(outfile), access='direct',status='unknown', form='unformatted',recl=nx*ny)
   read(99,rec=1)stm0
   close(99)
   !---------------This section just checks sums and figures out accuracy, not neccesary for the alorithm
@@ -321,20 +321,20 @@ do it=1,nd
   !--------------- Increment variables and write output
   stm0 = stm
   write(outfile,'(a,a,i4,a2,a2,a)')trim(streamdir),'/Streamflow_',y,zeromonth(m),strd,'.bin'
-  open(99,file=trim(outfile), access='direct',status='new', form='unformatted',recl=nx*ny)
+  open(99,file=trim(outfile), access='direct',status='unknown', form='unformatted',recl=nx*ny)
   write(99,rec=1)flw 
   close(99)
 
   if(ost == 1)then !output state everyday
     write(outfile,'(a,a,i4,a2,a2,a)')trim(statedir),'/State_',y,zeromonth(m),strd,'.bin'
-    open(99,file=trim(outfile), access='direct',status='new', form='unformatted',recl=nx*ny)
+    open(99,file=trim(outfile), access='direct',status='unknown', form='unformatted',recl=nx*ny)
     write(99,rec=1)stm 
     close(99)
   endif
 
   if(ost == 3 .and. it==nd)then !output state only at the end of the time run
     write(outfile,'(a,a,i4,a2,a2,a)')trim(statedir),'/State_',y,zeromonth(m),strd,'.bin'
-    open(99,file=trim(outfile), access='direct',status='new', form='unformatted',recl=nx*ny)
+    open(99,file=trim(outfile), access='direct',status='unknown', form='unformatted',recl=nx*ny)
     write(99,rec=1)stm 
     close(99)
   endif
@@ -347,7 +347,7 @@ do it=1,nd
     endif
     if(ost == 2)then !output state
       write(outfile,'(a,a,i4,a2,a2,a)')trim(statedir),'/State_',y,zeromonth(m),strd,'.bin'
-      open(99,file=trim(outfile), access='direct',status='new', form='unformatted',recl=nx*ny)
+      open(99,file=trim(outfile), access='direct',status='unknown', form='unformatted',recl=nx*ny)
       write(99,rec=1)stm 
       close(99)
     endif
