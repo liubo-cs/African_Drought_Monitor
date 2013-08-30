@@ -31,13 +31,13 @@ my $nth = 8; #number of threads to run
 my $mxg = 20; #maxium number of cells that the flow can be routed through, depends on resolution of topography and velocity  (300-30s),(20-900s)
 
 # Model Inputs
-my $modDir = "";
+my $modDir = $ARGV[5];
 my ($mtd,$nvr,$rid,$bid,$mnx,$mny,$mxmin,$mymin,$mxres,$myres) = (0);
 if($basin eq 'AFR')
 {
   # Africa
   #$modDir = "/home/raid20/nchaney/ADM_FOLLOW/Africa_Drought_Monitor/Data/Historical/VIC_output/output_grid_";
-  $modDir = "/home/freeze/water_monitor/African_Drought_Monitor/DATA/VIC/OUTPUT/DAILY/output_grid_";
+  #$modDir = "/home/freeze/water_monitor/African_Drought_Monitor/DATA/VIC/OUTPUT/DAILY/output_grid_";
   $mtd = 2; #Model output time step, 1-monthly, 2-daily
   $nvr = 21; # number of variables in the model output file
   $rid = 3; # variable number for runoff
@@ -66,8 +66,8 @@ if($basin eq 'CONUS')
 }
 
 my $WorkDir = "$baseDir/Workspace";
-my $streamDir = "$WorkDir/${basin}_$res/Flow";
-my $stateDir = "$WorkDir/${basin}_$res/State";
+my $streamDir = $ARGV[6];#"$WorkDir/${basin}_$res/Flow";
+my $stateDir = $ARGV[7];#"$WorkDir/${basin}_$res/State";
 
 system("mkdir -p $streamDir");
 system("mkdir -p $stateDir");

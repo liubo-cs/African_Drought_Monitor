@@ -229,9 +229,17 @@ def Download_and_Process_GFS_Analysis(date,dims):
  idate = date
  dt = datetime.timedelta(hours=6)
  for i in xrange(0,4):
-  ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day,date.hour)
-  cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
-  os.system(cmd)
+  date2 = date
+  while os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+   ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
+   cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
+   os.system(cmd)
+   if (date - date2).days > 0:
+    os.system("mv ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb" % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour))
+   date2 = date2 - datetime.timedelta(days=1)
+   if (date - date2).days > 10: 
+    print "Missing GFS analysis data for more than 10 days"
+    return
   date = date + dt
 
  #Create index and control file for the entire period
@@ -908,6 +916,70 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
 
  return
 
+def BiasCorrect_and_Output_GFSANL_Daily(date,dims):
+
+ #define parameters
+ file_out = '../DATA/GFS_ANL_BC/DAILY/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ if os.path.exists(file_out) == True:
+  return
+
+ if date < datetime.datetime(2008,1,1):
+  return
+
+ dt = relativedelta.relativedelta(years=1)
+ idate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(1950,date.month,date.day)
+ fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
+ idate_anl = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2001,date.month,date.day)
+ fdate_anl = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2012,date.month,date.day)
+ type = "all"
+
+ #original forcing
+ ctl_anl = "../DATA/GFS_ANL/DAILY/gfsanl_daily_0.25deg.ctl"
+ #baseline forcing
+ ctl_pgf = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
+
+ #Output data
+ nt = 1
+ tstep = 'days'
+ #vars = ['prec']
+ vars = ["tmax","tmin","wind"]
+ vars_info = ['daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
+ #Create file
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+
+ for var in vars:
+ 
+  print var
+
+  #Extract the required data
+  print "Extracting pgf data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=30)
+  dt_down = relativedelta.relativedelta(days=30)
+  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
+  print "Extracing anl data (Climatology)"
+  dt_up = relativedelta.relativedelta(days=30)
+  dt_down = relativedelta.relativedelta(days=30)
+  data_anl_clim = Extract_Data_Period_Average(idate_anl,fdate_anl,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
+  print "Extracing anl data (To correct)"
+  dt_up = relativedelta.relativedelta(days=0)
+  dt_down = relativedelta.relativedelta(days=0)
+  data_anl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
+
+
+  #CDF match the data
+  print "Matching the daily anl to the pgf"
+  data_anl_corrected = CDF_Match(data_pgf_clim,data_anl_clim,data_anl)
+
+  #Write to file
+  fp.variables[var][0] = data_anl_corrected
+
+ #Close file
+ fp.close()
+
+ return
+
 def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
 
  #define parameters
@@ -978,8 +1050,8 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
  file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
- if os.path.exists(file_out) == True:
-  return
+ #if os.path.exists(file_out) == True:
+ # return
 
  if date < datetime.datetime(2000,3,1):
   return
@@ -1001,15 +1073,15 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
  print "Extracting pgf data (Climatology)"
  dt_up = relativedelta.relativedelta(days=5)
  dt_down = relativedelta.relativedelta(days=5)
- data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type)
+ data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
  print "Extracing 3b42rt data (Climatology)"
  dt_up = relativedelta.relativedelta(days=5)
  dt_down = relativedelta.relativedelta(days=5)
- data_3b42rt_clim = Extract_Data_Period_Average(idate_3b42rt,fdate_3b42rt,dt_down,dt_up,dt,ctl_3b42rt,var,type)
+ data_3b42rt_clim = Extract_Data_Period_Average(idate_3b42rt,fdate_3b42rt,dt_down,dt_up,dt,ctl_3b42rt,var,type,'xdfopen')
  print "Extracing 3b42rt data (To correct)"
  dt_up = relativedelta.relativedelta(days=0)
  dt_down = relativedelta.relativedelta(days=0)
- data_3b42rt = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_3b42rt,var,type)
+ data_3b42rt = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_3b42rt,var,type,'xdfopen')
 
  #CDF match the data
  print "Matching the daily 3b42rt to the pgf"
@@ -1275,7 +1347,7 @@ def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
    t2 = datetime2gradstime(fdate)
 
    #Perform operation
-   ga("data = %s(maskout(%s,%s),time=%s,time=%s)" % (type,var,var,t1,t2))
+   ga("data = %s(maskout(%s,%s+900.0),time=%s,time=%s)" % (type,var,var,t1,t2))
 
    #Write to file
    data = np.ma.getdata(ga.exp("data"))
@@ -1552,7 +1624,7 @@ def Compute_Averages_PGF(date,dims,dt,flag_rp):
 
  return
 
-def Prepare_VIC_Global_Parameter_File(idate,fdate,dims):
+def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
 
  file = '../WORKSPACE/Global_Parameter.txt'
  fp = open(file,'w')
@@ -1631,21 +1703,84 @@ def Prepare_VIC_Global_Parameter_File(idate,fdate,dims):
  fp.write('VEGPARAM        ../DATA/VIC/INPUT/global_lai_0.25deg.txt\n')
  fp.write('VEGLIB          ../DATA/VIC/INPUT/veglib.dat\n')
  fp.write('GLOBAL_LAI      TRUE      # true if veg param file has monthly LAI\n')
- fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT/DAILY/\n')
+ if dataset == 'pgf':
+  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_PGF/DAILY/\n')
+ if dataset == '3b42rt':
+  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_3B42RT/DAILY/\n')
+ if dataset == 'gfsanl':
+  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_GFSANL/DAILY/\n')
 
  # Define the state file
  #fp.write('BINARY_STATE_FILE TRUE\n')
  #fp.write('STATE_GZIP        TRUE\n')
- fp.write('STATENAME ../DATA/VIC/STATE/state\n')
+ if dataset == 'pgf':
+  fp.write('STATENAME ../DATA/VIC/STATE_PGF/state\n')
+ if dataset == '3b42rt':
+  fp.write('STATENAME ../DATA/VIC/STATE_3B42RT/state\n')
+ if dataset == 'gfsanl':
+  fp.write('STATENAME ../DATA/VIC/STATE_GFSANL/state\n')
  fp.write('STATEYEAR %d\n' % fdate.year)
  fp.write('STATEMONTH %d\n' % fdate.month)
  fp.write('STATEDAY %d\n' % fdate.day)
- file_state = '../DATA/VIC/STATE/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ if dataset == 'pgf':
+  file_state = '../DATA/VIC/STATE_PGF/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ if dataset == '3b42rt':
+  file_state = '../DATA/VIC/STATE_3B42RT/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ if dataset == 'gfsanl':
+  file_state = '../DATA/VIC/STATE_GFSANL/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
  if os.path.exists(file_state) == True:
   fp.write('INIT_STATE %s\n' % file_state)
 
  #Close the file
  fp.close()
+
+def Prepare_VIC_Forcings_3B42RT(idate,fdate,dims):
+  
+ #Open files
+ pgf_ctl = '../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl' 
+ tmpabc_ctl = '../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl'
+ gfsanl_ctl = '../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl'
+ ga("xdfopen %s" % pgf_ctl)
+ ga("xdfopen %s" % gfsanl_ctl)
+ ga("xdfopen %s" % tmpabc_ctl)
+
+ #Forcing_Filename
+ forcing_file = '../DATA/VIC/FORCING/DAILY/forcing_daily_%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ fp = open(forcing_file,'wb')
+
+ #Extract and print data
+ date = idate
+ dt = datetime.timedelta(days=1)
+ while date <= fdate:
+  
+  print date
+  time = datetime2gradstime(date)
+  ga("set time %s" % time)
+  if date < datetime.datetime(2009,1,1):
+   met_id = 1
+  else:
+   met_id = 2
+  prec = np.ma.getdata(ga.exp("prec.3"))
+  tmax = np.ma.getdata(ga.exp("tmax.%d-273.15" % met_id))
+  tmin = np.ma.getdata(ga.exp("tmin.%d-273.15" % met_id))
+  wind = np.ma.getdata(ga.exp("wind.%d" % met_id))
+
+  #Append to the outgoing file
+  prec.tofile(fp)
+  tmax.tofile(fp)
+  tmin.tofile(fp)
+  wind.tofile(fp)
+
+  #Update the time step
+  date = date + dt
+
+ #Close the outgoing file
+ fp.close()
+ ga("close 3")
+ ga("close 2")
+ ga("close 1")
+
+ return forcing_file
 
 def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 
@@ -1661,7 +1796,7 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
  date = idate
  dt = datetime.timedelta(days=1)
  while date <= fdate:
-
+  
   print date
   time = datetime2gradstime(date)
   ga("set time %s" % time)
@@ -1681,14 +1816,36 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 
  #Close the outgoing file
  fp.close()
+ ga("close 1")
 
  return forcing_file
 
-def Run_VIC(idate,fdate,dims):
+def Run_VIC(idate,fdate,dims,dataset):
 
- dt = relativedelta.relativedelta(years=5)
+ dt = relativedelta.relativedelta(years=1)
  VIC_exe = '../SOURCE/VIC_4.0.5_image_mode/VIC_dev.exe'
  VIC_global = '../WORKSPACE/Global_Parameter.txt'
+
+ #If it is pgf
+ if dataset == 'pgf':
+  if fdate > datetime.datetime(2008,12,31):
+   fdate = datetime.datetime(2008,12,31)
+  if idate < datetime.datetime(1948,1,1):
+   idate = datetime.datetime(1948,1,1)
+  if (fdate - idate).days <= 0:
+   return
+ #If it is 3b42rt
+ if dataset == '3b42rt':
+  if idate < datetime.datetime(2003,1,1):
+   idate = datetime.datetime(2003,1,1)
+  if (fdate-idate).days <= 0:
+   return
+ #If it is gfsanl
+ if dataset == 'gfsanl':
+  if idate < datetime.datetime(2010,1,1):
+   idate = datetime.datetime(2010,1,1)
+  if (fdate-idate).days <= 0:
+   return
 
  #Run model until completed 
  idate_tmp = idate
@@ -1701,11 +1858,16 @@ def Run_VIC(idate,fdate,dims):
 
   #Prepare the VIC global parameter file
   print "Preparing the global parameter file"
-  Prepare_VIC_Global_Parameter_File(idate_tmp,fdate_tmp,dims)
+  Prepare_VIC_Global_Parameter_File(idate_tmp,fdate_tmp,dims,dataset)
 
   #Prepare the VIC forcings
   print "Preparing the VIC forcings"
-  forcing_file = Prepare_VIC_Forcings_Historical(idate_tmp,fdate_tmp,dims)
+  if dataset == 'pgf':
+   forcing_file = Prepare_VIC_Forcings_Historical(idate_tmp,fdate_tmp,dims) #Historical
+  if dataset == '3b42rt':
+   forcing_file = Prepare_VIC_Forcings_3B42RT(idate_tmp,fdate_tmp,dims) #3B42RT
+  if dataset == 'gfsanl': 
+   forcing_file = Prepare_VIC_Forcings_GFSANL(idate_tmp,fdate_tmp,dims) #GFS analysis
 
   #Run the model
   print "Running VIC"
@@ -1756,7 +1918,7 @@ def Extract_VIC_Baseflow_and_Runoff(date,dims):
 
  return
 
-def Run_Routing(idate,fdate,dims):
+def Run_VDSC(idate,fdate,dims,dataset):
 
  #If beginning of record start with no initial state
  ist = 1
@@ -1766,10 +1928,25 @@ def Run_Routing(idate,fdate,dims):
  imonth = idate.month
  iday = idate.day
  nt = (fdate - idate).days + 1
- output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
+ if dataset == 'pgf':
+  input_dir = '../DATA/VIC/OUTPUT/DAILY'
+  output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
+  state_dir = '../DATA/ROUTING_VIC_PGF/STATE'
+ if dataset == '3b42rt':
+  input_dir = '../DATA/VIC/OUTPUT_3B42RT/DAILY'
+  output_dir = '../DATA/ROUTING_VIC_3B42RT/DAILY'
+  state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
+ if dataset == 'gfsanl':
+  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY'
+  output_dir = '../DATA/ROUTING_VIC_GFSANL/DAILY'
+  state_dir = '../DATA/ROUTING_VIC_GFSANL/STATE'
+ #Add current directory info
+ input_dir = os.getcwd() + '/' + input_dir
+ output_dir = os.getcwd() + '/' + output_dir
+ state_dir = os.getcwd() + '/' + state_dir
  #Run the model
- os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d' % (iyear,imonth,iday,nt,ist))
+ os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d %s %s %s' % (iyear,imonth,iday,nt,ist,output_dir,input_dir,state_dir))
  #Move the routed flow its resting place
- os.system('mv ../SOURCE/Grid_Routing/Workspace/AFR_900s/Flow/* %s/.' % output_dir)
+ #os.system('mv ../SOURCE/Grid_Routing/Workspace/AFR_900s/Flow/* %s/.' % output_dir)
 
  return

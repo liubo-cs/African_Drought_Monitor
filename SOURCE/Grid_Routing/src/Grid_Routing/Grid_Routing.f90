@@ -143,7 +143,7 @@ if(ist > 0)then
   if(d < 1)then
     m = m -1
     if(m < 1)then
-      m = 1
+      m = 12
       y = y -1
     endif
     d = daysMonth(m)
