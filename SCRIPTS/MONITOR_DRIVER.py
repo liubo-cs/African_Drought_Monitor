@@ -65,7 +65,7 @@ def Download_and_BiasCorrect(date):
  #ml.Compute_NDVI_moving_average(date,dims)
 
  #Bias correct the gfs analysis product
- #ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims)
+ ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims)
 
  #################################################
  #COMPUTE INDICES
@@ -114,8 +114,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2003,1,1)
-fdate = datetime.datetime(2006,12,31)
+idate = datetime.datetime(2011,1,1)
+fdate = datetime.datetime(2011,12,31)
 date = idate
 dates = []
 #while date <= fdate:
@@ -140,7 +140,7 @@ print toc - tic
 #Run the model
 
 #Run VIC
-#ml.Run_VIC(idate,fdate,dims,'3b42rt')
+ml.Run_VIC(idate,fdate,dims,'3b42rt')
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 #ml.Run_VIC(idate,fdate,dims,'gfsanl')
 
@@ -151,4 +151,4 @@ print toc - tic
 
 #Run the VDSC model (Josh Roundy)
 
-ml.Run_VDSC(idate,fdate,dims,'3b42rt')
+#ml.Run_VDSC(idate,fdate,dims,'3b42rt')

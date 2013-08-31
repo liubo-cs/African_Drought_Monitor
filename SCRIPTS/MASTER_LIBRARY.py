@@ -1823,7 +1823,7 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 def Run_VIC(idate,fdate,dims,dataset):
 
  dt = relativedelta.relativedelta(years=1)
- VIC_exe = '../SOURCE/VIC_4.0.5_image_mode/VIC_dev.exe'
+ VIC_exe = '../SOURCE/VIC_4.0.5_image_mode_openmp/VIC_dev.exe'
  VIC_global = '../WORKSPACE/Global_Parameter.txt'
 
  #If it is pgf
@@ -1929,15 +1929,15 @@ def Run_VDSC(idate,fdate,dims,dataset):
  iday = idate.day
  nt = (fdate - idate).days + 1
  if dataset == 'pgf':
-  input_dir = '../DATA/VIC/OUTPUT/DAILY'
+  input_dir = '../DATA/VIC/OUTPUT/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
   state_dir = '../DATA/ROUTING_VIC_PGF/STATE'
  if dataset == '3b42rt':
-  input_dir = '../DATA/VIC/OUTPUT_3B42RT/DAILY'
+  input_dir = '../DATA/VIC/OUTPUT_3B42RT/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_3B42RT/DAILY'
   state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
  if dataset == 'gfsanl':
-  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY'
+  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_GFSANL/DAILY'
   state_dir = '../DATA/ROUTING_VIC_GFSANL/STATE'
  #Add current directory info
@@ -1945,8 +1945,6 @@ def Run_VDSC(idate,fdate,dims,dataset):
  output_dir = os.getcwd() + '/' + output_dir
  state_dir = os.getcwd() + '/' + state_dir
  #Run the model
- os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d %s %s %s' % (iyear,imonth,iday,nt,ist,output_dir,input_dir,state_dir))
- #Move the routed flow its resting place
- #os.system('mv ../SOURCE/Grid_Routing/Workspace/AFR_900s/Flow/* %s/.' % output_dir)
+ os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d %s %s %s' % (iyear,imonth,iday,nt,ist,input_dir,output_dir,state_dir))
 
  return

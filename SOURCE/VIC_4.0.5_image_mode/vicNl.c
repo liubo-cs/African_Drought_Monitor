@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
        **************************************************/
 
 #if VERBOSE
-      fprintf(stderr,"Initializing Forcing Data\n");
+      //fprintf(stderr,"Initializing Forcing Data\n");
 #endif /* VERBOSE */
 #endif /* !OUTPUT_FORCE */
 
@@ -259,8 +259,9 @@ int main(int argc, char *argv[])
 
 #if !OUTPUT_FORCE
 #if VERBOSE
-      fprintf(stderr,"Model State Initialization\n");
+      //fprintf(stderr,"Model State Initialization\n");
 #endif /* VERBOSE */
+      printf("lat:%f lon:%f cell number:%d\n",soil_con.lat,soil_con.lng,soil_con.gridcel);
       initialize_model_state(&prcp, dmy[0], atmos[0].air_temp[NR], 
 			     &global_param, infiles, soil_con.gridcel, 
 			     veg_con[0].vegetat_type_num, options.Nnode, 
@@ -269,7 +270,7 @@ int main(int argc, char *argv[])
 
 
 #if VERBOSE
-      fprintf(stderr,"Running Model\n");
+      //fprintf(stderr,"Running Model\n");
 #endif /* VERBOSE */
 
       /** Update Error Handling Structure **/
@@ -308,8 +309,8 @@ int main(int argc, char *argv[])
 	  }
 	}
       }
-      calc_water_balance_error(-global_param.nrecs,0.,0.,storage);
-      calc_energy_balance_error(-global_param.nrecs,0.,0.,0.,0.,0.);
+      //calc_water_balance_error(-global_param.nrecs,0.,0.,storage);
+      //calc_energy_balance_error(-global_param.nrecs,0.,0.,0.,0.,0.);
 
       /******************************************
 	Run Model in Grid Cell for all Time Steps

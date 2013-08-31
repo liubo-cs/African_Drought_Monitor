@@ -1,0 +1,448 @@
+diff SRC_4.0.5/Makefile SRC_4.0.5_stage1/Makefile
+52c52
+< 	estimate_T1.o free_dist_prcp.o free_vegcon.o frozen_soil.o \
+---
+> 	estimate_T1.o fetch_forcing_data.o free_dist_prcp.o free_vegcon.o frozen_soil.o \
+63c63
+< 	read_initial_model_state.o read_snowband.o \
+---
+> 	read_initial_model_state.o read_once_nldas_forcing.o read_snowband.o \
+68c68
+< 	vicNl.o vicerror.o write_atmosdata.o write_data.o write_debug.o \
+---
+> 	vicNl.o vicerror.o write_atmosdata.o write_data.o write_data_nldas_grid.o write_debug.o \
+92c92
+< 	$(CC) -o ../bin/VIC.exe $(OBJS) $(CFLAGS) $(LIBRARY)
+---
+> 	$(CC) -o VIC_dev.exe $(OBJS) $(CFLAGS) $(LIBRARY)
+Only in SRC_4.0.5: VIC_code_4.0.5.tar.gz
+Only in SRC_4.0.5_stage1: VIC_dev.exe
+diff SRC_4.0.5/close_files.c SRC_4.0.5_stage1/close_files.c
+32,36c32,38
+<   fclose(inf->forcing[0]);
+<   if(options.COMPRESS) compress_files(fnames->forcing[0]);
+<   if(inf->forcing[1]!=NULL) {
+<     fclose(inf->forcing[1]);
+<     if(options.COMPRESS) compress_files(fnames->forcing[1]);
+---
+>   if (!options.NLDAS_GRID_INPUT) {
+>     fclose(inf->forcing[0]);
+>     if(options.COMPRESS) compress_files(fnames->forcing[0]);
+>     if(inf->forcing[1]!=NULL) {
+>       fclose(inf->forcing[1]);
+>       if(options.COMPRESS) compress_files(fnames->forcing[1]);
+>     }
+43,45c45,49
+<   /** Energy and Moisture Fluxes Output File **/
+<   fclose(outf->fluxes);
+<   if(options.COMPRESS) compress_files(fnames->fluxes);
+---
+>   if (options.REGULAR_OUTPUT) {
+>             
+>     /** Energy and Moisture Fluxes Output File **/
+>     fclose(outf->fluxes);
+>     if(options.COMPRESS) compress_files(fnames->fluxes);
+49,64c53,68
+<   /** These output files are not used when using LDAS binary format **/
+< 
+<   /** Frozen Soils Output File **/
+<   if(options.FROZEN_SOIL) {
+<     fclose(outf->fdepth);
+<     if(options.COMPRESS) compress_files(fnames->fdepth);
+<   }
+< 
+<   /** Snow Data Output File **/
+<   fclose(outf->snow);
+<   if(options.COMPRESS) compress_files(fnames->snow);
+< 
+<   if(options.PRT_SNOW_BAND) {
+<     fclose(outf->snowband);
+<     if(options.COMPRESS) compress_files(fnames->snowband);
+<   }
+---
+>     /** These output files are not used when using LDAS binary format **/
+>   
+>     /** Frozen Soils Output File **/
+>     if(options.FROZEN_SOIL) {
+>       fclose(outf->fdepth);
+>       if(options.COMPRESS) compress_files(fnames->fdepth);
+>     }
+>   
+>     /** Snow Data Output File **/
+>     fclose(outf->snow);
+>     if(options.COMPRESS) compress_files(fnames->snow);
+>   
+>     if(options.PRT_SNOW_BAND) {
+>       fclose(outf->snowband);
+>       if(options.COMPRESS) compress_files(fnames->snowband);
+>     }
+67a72
+>   }
+diff SRC_4.0.5/cmd_proc.c SRC_4.0.5_stage1/cmd_proc.c
+2a3
+> #include <string.h>
+diff SRC_4.0.5/dist_prec.c SRC_4.0.5_stage1/dist_prec.c
+20c20,21
+< 	       int                  init_DRY_TIME) {
+---
+> 	       int                  init_DRY_TIME,
+>            int                  cell_cnt) {
+67a69,70
+>   
+>   char    LAST_CALL=FALSE;
+180c183
+< 
+---
+>   
+184c187
+< 	   options.Nnode, global_param->skipyear);
+---
+> 	   options.Nnode, global_param->skipyear, cell_cnt);
+Only in SRC_4.0.5_stage1: fetch_forcing_data.c
+diff SRC_4.0.5/get_global_param.c SRC_4.0.5_stage1/get_global_param.c
+407a408,420
+>       
+>       /** NLDAS Gridded Input/Output **/
+>       else if(strcasecmp("NLDAS_GRID_INPUT",optstr)==0) {
+>         sscanf(cmdstr,"%*s %s",flgstr);
+>         if(strcasecmp("TRUE",flgstr)==0) options.NLDAS_GRID_INPUT = TRUE;
+>         else options.NLDAS_GRID_INPUT = FALSE;
+>       }
+> 
+>       else if(strcasecmp("NLDAS_GRID_OUTPUT",optstr)==0) {
+>         sscanf(cmdstr,"%*s %s",flgstr);
+>         if(strcasecmp("TRUE",flgstr)==0) options.NLDAS_GRID_OUTPUT = TRUE;
+>         else options.NLDAS_GRID_OUTPUT = FALSE;
+>       }
+408a422,427
+>       else if(strcasecmp("REGULAR_OUTPUT",optstr)==0) {
+>         sscanf(cmdstr,"%*s %s",flgstr);
+>         if(strcasecmp("TRUE",flgstr)==0) options.REGULAR_OUTPUT = TRUE;
+>         else options.REGULAR_OUTPUT = FALSE;
+>       }
+>       
+diff SRC_4.0.5/initialize_atmos.c SRC_4.0.5_stage1/initialize_atmos.c
+3a4
+> //#include <time.h>
+18a20,21
+>               float                   **nldas_forcing,
+>               int                       cell_cnt,
+164c167,168
+<   forcing_data = read_forcing_data(infile, global_param);
+---
+>   if (!options.NLDAS_GRID_INPUT) forcing_data = read_forcing_data(infile, global_param);
+>   else forcing_data = fetch_forcing_data(nldas_forcing, global_param, cell_cnt);
+166c170
+<   fprintf(stderr,"\nRead meteorological forcing file\n");
+---
+>   //fprintf(stderr,"\nRead meteorological forcing file\n");
+296a301
+>     //fprintf(stderr, "before mtclim: %ld\n", clock());
+299a305
+>     //fprintf(stderr, "after mtclim: %ld\n", clock());
+diff SRC_4.0.5/make_in_and_outfiles.c SRC_4.0.5_stage1/make_in_and_outfiles.c
+11c11,12
+< 				      outfiles_struct  *outfp)
+---
+> 				      outfiles_struct  *outfp,
+>                       global_param_struct *global)
+34,54c35,60
+<   sprintf(junk, "%%.%if", options.GRID_DECIMAL);
+<   sprintf(latchar, junk, soil->lat);
+<   sprintf(lngchar, junk, soil->lng);
+<  
+<   strcat(fnames.forcing[0], latchar);
+<   strcat(fnames.forcing[0], "_");
+<   strcat(fnames.forcing[0], lngchar);
+<   if(param_set.FORCE_FORMAT[0] == BINARY)
+<     infp->forcing[0] = open_file(fnames.forcing[0], "rb");
+<   else
+<     infp->forcing[0] = open_file(fnames.forcing[0], "r");
+< 
+<   infp->forcing[1] = NULL;
+<   if(strcasecmp(fnames.forcing[1],"FALSE")!=0) {
+<     strcat(fnames.forcing[1], latchar);
+<     strcat(fnames.forcing[1], "_");
+<     strcat(fnames.forcing[1], lngchar);
+<     if(param_set.FORCE_FORMAT[0] == BINARY) 
+<       infp->forcing[1] = open_file(fnames.forcing[1], "rb");
+<     else 
+<       infp->forcing[1] = open_file(fnames.forcing[1], "r");
+---
+>   
+>   if (!options.NLDAS_GRID_INPUT) {
+> 
+>     sprintf(junk, "%%.%if", options.GRID_DECIMAL);
+>     sprintf(latchar, junk, soil->lat);
+>     sprintf(lngchar, junk, soil->lng);
+>      
+>     strcat(fnames.forcing[0], latchar);
+>     strcat(fnames.forcing[0], "_");
+>     strcat(fnames.forcing[0], lngchar);
+>     if(param_set.FORCE_FORMAT[0] == BINARY)
+>       infp->forcing[0] = open_file(fnames.forcing[0], "rb");
+>     else
+>       infp->forcing[0] = open_file(fnames.forcing[0], "r");
+> 
+>     infp->forcing[1] = NULL;
+>     if(strcasecmp(fnames.forcing[1],"FALSE")!=0) {
+>       strcat(fnames.forcing[1], latchar);
+>       strcat(fnames.forcing[1], "_");
+>       strcat(fnames.forcing[1], lngchar);
+>       if(param_set.FORCE_FORMAT[0] == BINARY) 
+>         infp->forcing[1] = open_file(fnames.forcing[1], "rb");
+>       else 
+>         infp->forcing[1] = open_file(fnames.forcing[1], "r");
+>     }
+>     
+55a62,64
+>   
+>   /** NLDAS Gridded Output */
+>   if (options.REGULAR_OUTPUT) {
+59,67c68,76
+<   strcpy(fnames.fluxes, fnames.result_dir);
+<   strcat(fnames.fluxes, "full_data");
+<   strcat(fnames.fluxes, "_");
+<   strcat(fnames.fluxes, latchar);
+<   strcat(fnames.fluxes, "_");
+<   strcat(fnames.fluxes, lngchar);
+<   if(options.BINARY_OUTPUT) 
+<     outfp->fluxes = open_file(fnames.fluxes, "wb");
+<   else outfp->fluxes = open_file(fnames.fluxes, "w");
+---
+>     strcpy(fnames.fluxes, fnames.result_dir);
+>     strcat(fnames.fluxes, "full_data");
+>     strcat(fnames.fluxes, "_");
+>     strcat(fnames.fluxes, latchar);
+>     strcat(fnames.fluxes, "_");
+>     strcat(fnames.fluxes, lngchar);
+>     if(options.BINARY_OUTPUT) 
+>       outfp->fluxes = open_file(fnames.fluxes, "wb");
+>     else outfp->fluxes = open_file(fnames.fluxes, "w");
+85,93c94,102
+<   strcpy(fnames.fluxes, fnames.result_dir);
+<   strcat(fnames.fluxes, "fluxes");
+<   strcat(fnames.fluxes, "_");
+<   strcat(fnames.fluxes, latchar);
+<   strcat(fnames.fluxes, "_");
+<   strcat(fnames.fluxes, lngchar);
+<   if(options.BINARY_OUTPUT) 
+<     outfp->fluxes = open_file(fnames.fluxes, "wb");
+<   else outfp->fluxes = open_file(fnames.fluxes, "w");
+---
+>     strcpy(fnames.fluxes, fnames.result_dir);
+>     strcat(fnames.fluxes, "fluxes");
+>     strcat(fnames.fluxes, "_");
+>     strcat(fnames.fluxes, latchar);
+>     strcat(fnames.fluxes, "_");
+>     strcat(fnames.fluxes, lngchar);
+>     if(options.BINARY_OUTPUT) 
+>       outfp->fluxes = open_file(fnames.fluxes, "wb");
+>     else outfp->fluxes = open_file(fnames.fluxes, "w");
+96,116c105,125
+<   strcpy(fnames.snow, fnames.result_dir);
+<   strcat(fnames.snow, "snow");
+<   strcat(fnames.snow, "_");
+<   strcat(fnames.snow, latchar);
+<   strcat(fnames.snow, "_");
+<   strcat(fnames.snow, lngchar);
+<   if(options.BINARY_OUTPUT) 
+<     outfp->snow = open_file(fnames.snow, "wb");
+<   else outfp->snow = open_file(fnames.snow, "w");
+< 
+<    if(options.PRT_SNOW_BAND) {
+<      strcpy(fnames.snowband, fnames.result_dir);
+<      strcat(fnames.snowband, "snowband");
+<      strcat(fnames.snowband, "_");
+<      strcat(fnames.snowband, latchar);
+<      strcat(fnames.snowband, "_");
+<      strcat(fnames.snowband, lngchar);
+<      if(options.BINARY_OUTPUT) 
+<        outfp->snowband = open_file(fnames.snowband, "wb");
+<      else outfp->snowband = open_file(fnames.snowband, "w");
+<    }
+---
+>     strcpy(fnames.snow, fnames.result_dir);
+>     strcat(fnames.snow, "snow");
+>     strcat(fnames.snow, "_");
+>     strcat(fnames.snow, latchar);
+>     strcat(fnames.snow, "_");
+>     strcat(fnames.snow, lngchar);
+>     if(options.BINARY_OUTPUT) 
+>       outfp->snow = open_file(fnames.snow, "wb");
+>     else outfp->snow = open_file(fnames.snow, "w");
+> 
+>      if(options.PRT_SNOW_BAND) {
+>        strcpy(fnames.snowband, fnames.result_dir);
+>        strcat(fnames.snowband, "snowband");
+>        strcat(fnames.snowband, "_");
+>        strcat(fnames.snowband, latchar);
+>        strcat(fnames.snowband, "_");
+>        strcat(fnames.snowband, lngchar);
+>        if(options.BINARY_OUTPUT) 
+>          outfp->snowband = open_file(fnames.snowband, "wb");
+>        else outfp->snowband = open_file(fnames.snowband, "w");
+>      }
+118a128,130
+>      
+>   } /* End of regular output */
+>   
+diff SRC_4.0.5/mtclim42_vic.c SRC_4.0.5_stage1/mtclim42_vic.c
+405c405
+<   double ratio;
+---
+>   double ratio=1;
+diff SRC_4.0.5/mtclim42_wrapper.c SRC_4.0.5_stage1/mtclim42_wrapper.c
+27a28
+> //#include <time.h>
+93a95
+>     //fprintf(stderr, "before calc_srad_humidity_iterative: %ld\n", clock());
+97a100
+>     //fprintf(stderr, "after calc_srad_humidity_iterative: %ld\n", clock());
+diff SRC_4.0.5/open_file.c SRC_4.0.5_stage1/open_file.c
+2c2
+< #include <strings.h>
+---
+> #include <string.h>
+38a39,45
+>   static int cnt;
+>   
+>   /*
+>   cnt++;
+>   fprintf(stderr, "Open_%d: %s\n", cnt, string);
+>   */
+>   
+diff SRC_4.0.5/put_data.c SRC_4.0.5_stage1/put_data.c
+20c20,21
+< 	      int                skipyear)
+---
+> 	      int                skipyear,
+>           int                cell_cnt)
+446,448c447,452
+< 
+<   if(rec >= skipyear)
+<     write_data(out_data, outfiles, dmy, dt);
+---
+>   
+>   /** NLDAS Gridded Output */
+>   if(rec >= skipyear) {
+>     if (options.NLDAS_GRID_OUTPUT) write_data_nldas_grid(out_data, (filenames_struct *)NULL, (global_param_struct *)NULL, cell_cnt, -9999, rec);
+>     if (options.REGULAR_OUTPUT) write_data(out_data, outfiles, dmy, dt);
+>   }
+Only in SRC_4.0.5_stage1: read_once_nldas_forcing.c
+diff SRC_4.0.5/read_vegparam.c SRC_4.0.5_stage1/read_vegparam.c
+143c143
+<     fprintf(stderr,"WARNING: Cv exceeds 1.0 at grid cell %d, fractions being adjusted to equal 1\n", gridcel);
+---
+>     //fprintf(stderr,"WARNING: Cv exceeds 1.0 at grid cell %d, fractions being adjusted to equal 1\n", gridcel);
+150c150
+<     fprintf(stderr,"WARNING: Cv > 0.99 and Cv < 1.0 at grid cell %d, model assuming that bare soil is not to be run - fractions being adjusted to equal 1\n", gridcel);
+---
+>     //fprintf(stderr,"WARNING: Cv > 0.99 and Cv < 1.0 at grid cell %d, model assuming that bare soil is not to be run - fractions being adjusted to equal 1\n", gridcel);
+diff SRC_4.0.5/root_brent.c SRC_4.0.5_stage1/root_brent.c
+108,110c108,110
+<   double c;
+<   double d;
+<   double e;
+---
+>   double c=0;
+>   double d=0;
+>   double e=0;
+diff SRC_4.0.5/user_def.h SRC_4.0.5_stage1/user_def.h
+11c11
+< #define VERBOSE FALSE 
+---
+> #define VERBOSE FALSE
+diff SRC_4.0.5/vicNl.c SRC_4.0.5_stage1/vicNl.c
+90a91,92
+>   float                  **nldas_forcing = (float **)NULL; /* stores all the forcing data */
+>   
+139c141,147
+< 
+---
+>   
+>   /** NLDAS Gridded Iutput, read the whole forcing file in once **/
+>   if (options.NLDAS_GRID_INPUT) nldas_forcing = read_once_nldas_forcing(&filenames, global_param);
+> 
+>   /** NLDAS Gridded Output: initialize **/
+>   if (options.NLDAS_GRID_OUTPUT) write_data_nldas_grid((out_data_struct *)NULL, &filenames, &global_param, -9999, global_param.nrecs, -1);
+>   
+146a155
+>       
+148,149c157,158
+< 	if(flag) RUN_MODEL=TRUE;
+< 	else     RUN_MODEL=FALSE;
+---
+>         if(flag) RUN_MODEL=TRUE;
+>           else RUN_MODEL=FALSE;
+152,153c161,167
+< 	MODEL_DONE = TRUE;
+< 	RUN_MODEL = FALSE;
+---
+>         MODEL_DONE = TRUE;
+>         RUN_MODEL = FALSE;
+>       }
+>       
+>       if(!MODEL_DONE) {
+>           soil_con = read_soilparam(infiles.soilparam, RUN_MODEL);
+>           cell_cnt++;
+155d168
+<       if(!MODEL_DONE) soil_con = read_soilparam(infiles.soilparam, RUN_MODEL);
+201c214
+<                    &outfiles);
+---
+>                    &outfiles, &global_param);
+229a243
+>                nldas_forcing, cell_cnt, /* NLDAS Gridded Input */
+309c323
+< 		   NEWCELL, LASTREC, init_STILL_STORM, init_DRY_TIME );
+---
+> 		   NEWCELL, LASTREC, init_STILL_STORM, init_DRY_TIME, cell_cnt);
+342a357,359
+>   
+>   /** NLDAS Gridded Output: write to file **/
+>   if (options.NLDAS_GRID_OUTPUT) write_data_nldas_grid((out_data_struct *)NULL, &filenames, &global_param, -9999, global_param.nrecs, -2);
+Only in SRC_4.0.5_stage1: vicNl.c.bak
+diff SRC_4.0.5/vicNl.h SRC_4.0.5_stage1/vicNl.h
+82c82
+< 		 outfiles_struct *,int,int,char,char, char, int);
+---
+> 		 outfiles_struct *,int,int,char,char, char, int, int);
+126a127,128
+> /** NLDAS Gridded Input **/
+> double **fetch_forcing_data(float **, global_param_struct, int);
+157a160
+>             float **, int, /* NLDAS Gridded Input */
+183c186
+< 				      soil_con_struct *, outfiles_struct *);
+---
+> 				      soil_con_struct *, outfiles_struct *, global_param_struct *);
+213c216
+< 		char *, dmy_struct *, int, int, int, int); 
+---
+> 		char *, dmy_struct *, int, int, int, int, int); 
+220a224,225
+> /** NLDAS Gridded Input **/
+> float **read_once_nldas_forcing(filenames_struct *, global_param_struct);
+330a336,337
+> /** NLDAS Gridded Output **/
+> void write_data_nldas_grid(out_data_struct *, filenames_struct *, global_param_struct *, int, int, int);
+diff SRC_4.0.5/vicNl_def.h SRC_4.0.5_stage1/vicNl_def.h
+115a116,122
+> /***** NLDAS Grid Specifications *****/
+> #define NLDAS_NROWS      224
+> #define NLDAS_NCOLS      464
+> #define NLDAS_LL_LAT      25.0000
+> #define NLDAS_LL_LON    -125.0000
+> #define NLDAS_CELL         0.125
+> 
+211a219,226
+>   
+>   /** NLDAS Gridded Input/Output */
+>   /** Note: either/both/neither type can be output at the same time,
+>             but there must be one input                               **/
+>   
+>   char   NLDAS_GRID_INPUT;   /** TRUE: NLDAS Gridded Intput; FALSE: Point-wise Input **/
+>   char   NLDAS_GRID_OUTPUT;  /** TRUE: NLDAS Gridded Output **/
+>   char   REGULAR_OUTPUT;     /** TRUE: Regular Point-wise Output **/
+Only in SRC_4.0.5_stage1: write_data_nldas_grid.c
