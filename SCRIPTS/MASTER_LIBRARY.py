@@ -26,6 +26,7 @@ import cPickle as pickle
 #grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
+#Reprocess_Flag = False
 
 
 def Create_NETCDF_File(dims,file,vars,vars_info,tinitial,tstep,nt):
@@ -121,7 +122,7 @@ def Download_NCEP_FNL_Analysis(date,root):
 
  return 
 
-def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
+def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate,Reprocess_Flag):
  
  workspace = '../WORKSPACE'
  fnl_analysis_root = '../DATA/FNL_ANALYSIS/DAILY'
@@ -139,7 +140,7 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
  #If the file already exists exit:
  file = 'fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
  netcdf_file = '%s/%s' % (fnl_analysis_root,file)
- if os.path.exists(netcdf_file) == True:
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
   return
  
  print_info_to_command_line("Downloading and processing the NCEP GFS final analysis")
@@ -209,18 +210,19 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate):
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
 
-def Download_and_Process_GFS_Analysis(date,dims):
+def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
 
  gfs_anl_root = '../DATA/GFS_ANL/DAILY'
  workspace = '../WORKSPACE'
  #If the data is before the product's start date return:
- if date < datetime.datetime(2008,1,1):
+ itime = datetime.datetime(2008,1,1)
+ if date < itime:
   return
 
  #If the file already exists exit:
  file = 'GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  netcdf_file = '%s/%s' % (gfs_anl_root,file)
- if os.path.exists(netcdf_file) == True:
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
   return
  
  print_info_to_command_line("Downloading and processing the NCEP GFS analysis")
@@ -290,9 +292,15 @@ def Download_and_Process_GFS_Analysis(date,dims):
  #Remove files from the workspace
  os.system('rm -f %s/gfsanl_3*' % workspace)
 
+ #Update the control file
+ ctl_out = '../DATA/GFS_ANL/DAILY/gfsanl_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('GFS_ANL','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  return
 
-def Download_and_Process_3b42RT(date,dims,flag_reprocess):
+def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
 
  workspace = '../WORKSPACE'
  tmpa_3b42rt_root = '../DATA/3B42RT/DAILY'
@@ -306,7 +314,7 @@ def Download_and_Process_3b42RT(date,dims,flag_reprocess):
  #If the file already exists exit:
  file = '3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,dims['res'])
  netcdf_file = '%s/%s' % (tmpa_3b42rt_root,file)
- if os.path.exists(netcdf_file) ==True and flag_reprocess != 'rp':
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
   return
 
  print_info_to_command_line("Downloading and processing the 3b42RT product")
@@ -391,7 +399,7 @@ def Download_and_Process_GFS_forecast(date,dims):
   return
 
  #If the directory already exists exit:
- if os.path.exists(dir) == False:
+ if os.path.exists(dir) == False and Reprocess_Flag == False:
   os.system("mkdir %s" % dir)
 
  print_info_to_command_line("Downloading and processing the gfs 7-day forecast")
@@ -467,7 +475,7 @@ def Download_and_Process_GFS_forecast(date,dims):
 
  return
 
-def Download_and_Process_NDVI(date,dims):
+def Download_and_Process_NDVI(date,dims,Reprocess_Flag):
 
  workspace = '../WORKSPACE'
  modis_root = '../DATA/MOD09_NDVI/DAILY' 
@@ -479,7 +487,7 @@ def Download_and_Process_NDVI(date,dims):
  #If the file already exists exit:
  file = 'MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  netcdf_file = '%s/%s' % (modis_root,file)
- if os.path.exists(netcdf_file) == True:
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
   return
 
  print_info_to_command_line("Downloading and processing the MODIS MOD09CMG product (NDVI)")
@@ -623,7 +631,7 @@ def getBit_array(x, p):
  array[array!=0] = 1
  return array
 
-def Compute_NDVI_moving_average(date,dims):
+def Compute_NDVI_moving_average(date,dims,Reprocess_Flag):
 
  dt_array = [datetime.timedelta(days=60),datetime.timedelta(days=30),datetime.timedelta(days=20),datetime.timedelta(days=10),datetime.timedelta(days=5),datetime.timedelta(days=1)]
  modis_root = '../DATA/MOD09_NDVI_MA/DAILY'
@@ -635,7 +643,7 @@ def Compute_NDVI_moving_average(date,dims):
   return
 
  #If file exists exit
- if os.path.exists(file) == True:
+ if os.path.exists(file) == True and Reprocess_Flag == False:
   return
 
  print_info_to_command_line("Computing the MODIS MOD09CMG product n-day moving averages (NDVI)")
@@ -798,11 +806,11 @@ def CDF_Match(data_baseline_clim,data_biased_clim,data_biased):
 
  return data_corrected
 
-def Regrid_and_Output_3B42rt(date,dims):
+def Regrid_and_Output_3B42rt(date,dims,Reprocess_Flag):
 
  print date
  file_out = '../DATA/3B42RT_RG/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
- if os.path.exists(file_out) == True:
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
  if date < datetime.datetime(2000,3,1):
   return
@@ -829,7 +837,7 @@ def Regrid_and_Output_3B42rt(date,dims):
 
  return
 
-def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
+def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
 
  dir = '../DATA/GFS_BC/%04d%02d%02d' % (date.year,date.month,date.day)
 
@@ -838,7 +846,7 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
   return
 
  #If the directory already exists exit:
- if os.path.exists(dir) == False:
+ if os.path.exists(dir) == False and Reprocess_Flag == False:
   os.system("mkdir %s" % dir)
 
  dt = relativedelta.relativedelta(years=1)
@@ -865,7 +873,7 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
   file = dir + '/gfs_%04d%02d%02d_daily_%.3fdeg_day%d.nc' % (idate.year,idate.month,idate.day,dims['res'],t+1)
 
   #Determine if we skip the time step
-  if os.path.exists(file) == True:
+  if os.path.exists(file) == True and Reprocess_Flag == False:
    date = date + datetime.timedelta(days=1)
    continue
 
@@ -916,13 +924,13 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims):
 
  return
 
-def BiasCorrect_and_Output_GFSANL_Daily(date,dims):
+def BiasCorrect_and_Output_GFSANL_Daily(date,dims,Reprocess_Flag):
 
  #define parameters
  file_out = '../DATA/GFS_ANL_BC/DAILY/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
- if os.path.exists(file_out) == True:
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
 
  if date < datetime.datetime(2008,1,1):
@@ -980,14 +988,14 @@ def BiasCorrect_and_Output_GFSANL_Daily(date,dims):
 
  return
 
-def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
+def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims,Reprocess_Flag):
 
  #define parameters
  file_out = '../DATA/FNL_ANALYSIS_BC/DAILY/fnlanl_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
- #if os.path.exists(file_out) == True:
- # return
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
+  return
 
  if date < datetime.datetime(2010,1,1):
   return
@@ -1044,14 +1052,14 @@ def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims):
 
  return
    
-def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
+def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,Reprocess_Flag):
 
  #define parameters
  file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #If the file exists then exit (unless we are reprocessing the data)
- #if os.path.exists(file_out) == True:
- # return
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
+  return
 
  if date < datetime.datetime(2000,3,1):
   return
@@ -1104,9 +1112,17 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims):
 
 def Calculate_and_Output_SPI(date,dims):
 
+ #define parameters
+ itime = datetime.datetime(1950,1,1)
+ if date >= itime and date <= datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
+ elif date > datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl"
+ else:
+  return
  file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  #Precipitation dataset
- ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
+ #ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
  dt = relativedelta.relativedelta(years=1)
  #idate_clim = datetime.datetime(1950,date.month,date.day)
  #fdate_clim = datetime.datetime(2008,date.month,date.day)
@@ -1137,16 +1153,22 @@ def Calculate_and_Output_SPI(date,dims):
    data_clim = pickle.load(open(file_climatology,"rb"))
   else:
    print "Calculating the climatology"
-   data_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,var,type)
+   data_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,var,type,'xdfopen')
    print "Saving the climatology data to storage"
    pickle.dump(data_clim,open(file_climatology,'wb'))
   #Extract the period we are interested in 
-  data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type)
+  data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type,'xdfopen')
 
   #Calculate SPI
   print "Calculating the SPI"
   spi.append(Calculate_SPI(data_clim,data))
 
+ #Update the control file
+ ctl_out = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('SPI','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+ 
  #Create files and output all the data
  nt = 1
  tstep = 'days'
@@ -1156,39 +1178,104 @@ def Calculate_and_Output_SPI(date,dims):
   vars.append('spi%d' % spi_month)
   vars_info.append('%d month SPI' % spi_month)
 
- date = idate_tstep
- i = 0
- while date <= fdate_tstep:
-  
-  #Create file
-  file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
-  fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+ #Create file
+ file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
 
-  #Write to file
-  for j in xrange(0,len(spi_months)):
-   fp.variables[vars[j]][0] = spi[j][i,:,:]
-   j = j + 1
+ #Write to file
+ for j in xrange(0,len(spi_months)):
+  fp.variables[vars[j]][0] = spi[j]
+  j = j + 1
 
-  #Close file
-  fp.close()
+ #Close file
+ fp.close()
  
-  #Update time step
-  date = date + dt
-  i = i + 1
+ return
 
+def Calculate_and_Output_Streamflow_Percentiles(date,dims):
+
+ #define parameters
+ root = '../DATA/ROUTING_VIC_DERIVED'
+ itime = datetime.datetime(1950,1,1)
+ if date >= itime and date <= datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl"
+ elif date > datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl"
+ else:
+  return
+ file_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ ctl_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl'
+ dt = relativedelta.relativedelta(years=1)
+ idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)
+ fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)
+ type = "all"
+
+ #If the product for today exists then exit
+ if os.path.exists(file_out) == True:
+  return
+
+ #Extract the required data
+ var = 'flw'
+ dt_up = datetime.timedelta(days=1)
+ dt_down = datetime.timedelta(days=1)
+ print "Extracing streamflow data (Climatology)"
+ #If the climatology has already been saved open and if not save it
+ file_climatology = '../DATA/ROUTING_VIC_DERIVED/DAILY_CLIMATOLOGY/%02d%02d_daily_%.3fdeg.pck' % (date.month,date.day,dims['res'])
+ if os.path.exists(file_climatology) == True:
+  print "Loading the climatology data from storage"
+  data_clim = pickle.load(open(file_climatology,"rb"))
+ else:
+  print "Calculating the climatology"
+  data_clim = Extract_Data_Period_Average(idate_clim,fdate_clim,dt_down,dt_up,dt,ctl_in,var,type,'open')
+  print "Saving the climatology data to storage"
+  pickle.dump(data_clim,open(file_climatology,'wb'))
+
+ print "Extracing streamflow data (To calculate percentile)"
+ dt_up = relativedelta.relativedelta(days=0)
+ dt_down = relativedelta.relativedelta(days=0)
+ data = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_in,var,type,'open')
+
+ #Calculate the percentiles
+ print "Calculating the percentiles"
+ pct = Calculate_Percentiles(data_clim,data)
+
+ #Output data
+ nt = 1
+ tstep = 'days'
+ vars = ['flw_pct']
+ vars_info = ['Streamflow percentiles']
+ #Create file
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+ #Write to file
+ fp.variables['flw_pct'][0] = pct
+ #Close file
+ fp.close()
+
+ #Update the control file
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('routing_vic_derived','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+ 
  return
 
 def Calculate_and_Output_SM_Percentiles(date,dims):
 
  #define parameters
- file_out = '../DATA/VIC_DERIVED/DAILY/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ root = '../DATA/VIC_DERIVED'
  ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
+ itime = datetime.datetime(1950,1,1)
+ if date >= itime and date <= datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
+ elif date > datetime.datetime(2008,12,31):
+  ctl_in = "../DATA/VIC/OUTPUT_3B42RT/DAILY/vic_daily_0.25deg.ctl"
+ else:
+  return
+ file_out = '%s/DAILY/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (root,date.year,date.month,date.day,dims['res'])
+ ctl_out = '%s/DAILY/vic_derived_daily_0.25deg.ctl' % root
  soil_ctl = "../DATA/VIC/INPUT/soil_Africa_0.25deg_calibrated_final.ctl"
  dt = relativedelta.relativedelta(years=1)
- idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)#datetime.datetime(1950,date.month,date.day)
- fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
- #idate_clim = datetime.datetime(1950,date.month,date.day)
- #fdate_clim = datetime.datetime(2008,date.month,date.day)
+ idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)
+ fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)
  idate_tstep = date
  fdate_tstep = date
  dt_up = relativedelta.relativedelta(days=1)
@@ -1254,7 +1341,22 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
  #Close file
  fp.close()
 
+ #Update the control file
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('vic_derived','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  return
+
+def Update_Control_File(type,idate,dims,nt,tstep,file_template,ctl_file):
+
+ if type == 'nc':
+  fp = open(ctl_file,'w')
+  fp.write('dset %s\n' % file_template)
+  fp.write('options template\n')
+  fp.write('dtype netcdf\n')
+  fp.write('tdef t %d linear %s %s\n' % (nt,datetime2gradstime(idate),tstep))
+  fp.close()
 
 def Calculate_and_Output_NDVI_Percentiles(date,dims):
 
@@ -1356,7 +1458,7 @@ def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
  #Close access to the grads file
  ga("close 1")
 
-def Download_and_Process_Seasonal_Forecast(date):
+def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
  dir0 = '../DATA/SEASONAL_FORECAST/%04d%02d' % (date.year,date.month)
 

@@ -26,32 +26,32 @@ def Download_and_BiasCorrect(date):
  #ml.Reprocess_PGF(date,dims)
 
  #Download and process the gfs final analysis data
- #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate)
+ #ml.Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate,False)
 
  #Download and process the 3b42rt precipitation data
- #ml.Download_and_Process_3b42RT(date,dims,'standard')
+ ml.Download_and_Process_3b42RT(date,dims,False)
 
  #Download gfs forecast
- #ml.Download_and_Process_GFS_forecast(date,dims)
+ #ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
- #ml.Download_and_Process_NDVI(date,dims)
+ ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
- #ml.Download_and_Process_Seasonal_Forecast(date)
+ ml.Download_and_Process_Seasonal_Forecast(date,False)
 
  #Download and process the gfs analysis data
- #ml.Download_and_Process_GFS_Analysis(date,dims)
+ ml.Download_and_Process_GFS_Analysis(date,dims,False)
 
  #################################################
  #BIAS CORRECT THE DOWNLOADED DATA
  #################################################
 
  #Regrid and downscale 3b42rt (ensure it complies with the pgf grid)
- #ml.Regrid_and_Output_3B42rt(date,dims)
+ ml.Regrid_and_Output_3B42rt(date,dims,False)
 
  #Bias correct the 3b42rt precipitation product
- #ml.BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims)
+ ml.BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,False)
 
  #Bias correct the gfs final analysis product
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
@@ -62,10 +62,10 @@ def Download_and_BiasCorrect(date):
  #Bias correct the seasonal forecast
  
  #Compute different moving averages of the ndvi product
- #ml.Compute_NDVI_moving_average(date,dims)
+ ml.Compute_NDVI_moving_average(date,dims,False)
 
  #Bias correct the gfs analysis product
- ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims)
+ ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
 
  #################################################
  #COMPUTE INDICES
@@ -76,6 +76,8 @@ def Download_and_BiasCorrect(date):
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
+
+ #ml.Calculate_and_Output_Streamflow_Percentiles(date,dims)
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
@@ -88,6 +90,8 @@ def Download_and_BiasCorrect(date):
  #ml.Compute_Averages_SM_Percentiles(date,dims,dt)
 
  #ml.Compute_Averages_SPI(date,dims,dt)
+
+ #ml.Compute_Avarages_Routing(date,dims,dt)
 
 
  #1. Determine the period that needs to be updated
@@ -114,8 +118,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2011,1,1)
-fdate = datetime.datetime(2011,12,31)
+idate = datetime.datetime(2013,1,1)
+fdate = datetime.datetime(2013,9,1)
 date = idate
 dates = []
 #while date <= fdate:
@@ -140,7 +144,7 @@ print toc - tic
 #Run the model
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims,'3b42rt')
+#ml.Run_VIC(idate,fdate,dims,'3b42rt')
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 #ml.Run_VIC(idate,fdate,dims,'gfsanl')
 
