@@ -69,6 +69,7 @@ void dist_prec(atmos_data_struct   *atmos,
   
   char    LAST_CALL=FALSE;
 
+  #pragma omp threadprivate(STILL_STORM, DRY_TIME)
 
   // check if state file has been used to initialize storm tracking
   if ( init_DRY_TIME >= 0 ) {
@@ -198,15 +199,18 @@ void dist_prec(atmos_data_struct   *atmos,
   /************************************
     Save model state at assigned date
   ************************************/
-
+  
   if ( outfiles->statefile != NULL
        &&  ( dmy[rec].hour == 0 
 	     && dmy[rec+1].year == global_param->stateyear
 	     && dmy[rec+1].month == global_param->statemonth 
-	     && dmy[rec+1].day == global_param->stateday ) )
+	     && dmy[rec+1].day == global_param->stateday ) ){
+
+  #pragma omp ordered 
     write_model_state(prcp, global_param, veg_con[0].vegetat_type_num, 
 		      soil_con->gridcel, outfiles, soil_con,
 		      STILL_STORM, DRY_TIME);
+  }
 
 #endif
 

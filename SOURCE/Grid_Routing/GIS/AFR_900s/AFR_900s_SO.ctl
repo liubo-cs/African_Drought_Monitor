@@ -1,4 +1,4 @@
-dset /home/wind/jroundy/Workspace/GIS/bin/AFR_900s/AFR_900s_SO.bin
+dset ^AFR_900s_SO.bin
 title Stream Order based on min_area = 0.5 for AFR at 900s resolution
 options little_endian
 undef -9999

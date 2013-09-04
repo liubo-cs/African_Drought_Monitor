@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 **********************************************************************/
 {
 
-  extern veg_lib_struct *veg_lib;
+  extern veg_lib_struct *veg_lib; //
   extern option_struct options;
 #if LINK_DEBUG
   extern debug_struct debug;
@@ -57,32 +57,33 @@ int main(int argc, char *argv[])
 
   /** Variable Declarations **/
 
-  char                     NEWCELL;
-  char                     LASTREC;
-  char                     MODEL_DONE;
-  char                     init_STILL_STORM;
-  int                      rec, i, j;
-  int                      veg;
-  int                      dist;
-  int                      band;
-  int                      Ndist;
-  int                      Nveg_type;
-  int                      cellnum;
-  int                      index;
-  int                      init_DRY_TIME;
-  int                      RUN_MODEL;
-  int                      cell_cnt;
-  int                      startrec;
-  double                   storage;
-  double                   veg_fract;
-  double                   band_fract;
+  char                     NEWCELL; //
+  char                     LASTREC; //
+  char                     MODEL_DONE; //
+  char                     init_STILL_STORM; //
+  int                      rec, i, j; //
+  int                      veg; //
+  int                      dist; //
+  int                      band; //
+  int                      Ndist; /**/
+  int                      Nveg_type; //
+  int                      cellnum; //
+  int                      index; //
+  int                      init_DRY_TIME; //
+  int                      RUN_MODEL; //
+  int                      cell_cnt; /**/
+  int                      startrec; /**/
+  double                   storage; //
+  double                   veg_fract; //
+  double                   band_fract; //
   dmy_struct              *dmy;
   //atmos_data_struct       *atmos;
   //veg_con_struct          *veg_con, **veg_con_all;
   veg_con_struct          **veg_con_all;
-  soil_con_struct          soil_con, *soil_con_all;
-  dist_prcp_struct         prcp; /* stores information about distributed 
-				    precipitation */
+  //soil_con_struct          *soil_con_all;
+  soil_con_struct          soil_con, *soil_con_all; //
+  //dist_prcp_struct         prcp; /* stores information about distributed 
+  //				    precipitation */
   filenames_struct         filenames;
   filenames_struct         builtnames;
   infiles_struct           infiles;
@@ -160,38 +161,47 @@ int main(int argc, char *argv[])
       }
       else fgets(linebuffer, MAXSTRING, infiles.soilparam);
   }
-      
   
   /************************************
     Run Model for all Active Grid Cells
     ************************************/
-  //atmos_data_struct       *atmos;
-  //  //veg_con_struct          *veg_con, **veg_con_all;
-  //    soil_con_struct          soil_con, *soil_con_all;
-  //      dist_prcp_struct         prcp; /* stores information about distributed 
-  //                                          precipitation */
-  //                                            filenames_struct         filenames;
-  //                                              filenames_struct         builtnames;
-  //                                                infiles_struct           infiles;
-  //                                                  outfiles_struct          outfiles;
-  #pragma omp parallel for ordered private(storage, veg_fract, band_fract, veg, band, index, dist,soil_con,cellnum,prcp,init_STILL_STORM,init_DRY_TIME,NEWCELL,LASTREC,MODEL_DONE,rec,i,j) schedule(static,1)//,infiles)
+  #pragma omp parallel for ordered private(storage, veg_fract, band_fract, veg, band, index, dist,soil_con,cellnum,init_STILL_STORM,init_DRY_TIME,NEWCELL,LASTREC,MODEL_DONE,rec,i,j,veg_lib,Nveg_type,RUN_MODEL) firstprivate(options,debug,Error,global_param) schedule(static,1)//,infiles)
  for (cell_cnt=1; cell_cnt<=NCELLS; cell_cnt++) {
   atmos_data_struct *atmos;
   veg_con_struct *veg_con;
+  dist_prcp_struct prcp;
   MODEL_DONE = FALSE;
   RUN_MODEL  = TRUE;
   /** allocate memory for the atmos_data_struct **/
   alloc_atmos(global_param.nrecs, &atmos);
+  if (cell_cnt == omp_get_thread_num()+1){
+   //extern veg_lib_struct *veg_lib;
+    #pragma omp critical
+    veg_lib = read_veglib(infiles.veglib,&Nveg_type);
+  }
   //while(!MODEL_DONE) {
       
-      if (cell_cnt==NCELLS) {
+      if (cell_cnt==NCELLS+1) {
         MODEL_DONE = TRUE;
         RUN_MODEL = FALSE;
       }
       
       if(!MODEL_DONE) {
           soil_con = soil_con_all[cell_cnt-1];
+          //#pragma omp ordered
+          //veg_con = read_vegparam(infiles.vegparam, soil_con.gridcel,Nveg_type);
+      //            //printf("here1: %d\n",soil_con.gridcel);
           veg_con = veg_con_all[cell_cnt-1];
+          for (i=0;i<veg_con[0].vegetat_type_num;i++){
+           //printf("%d: ",veg_con[i].veg_class); 
+           for (j=0;j<12;j++){
+             veg_lib[veg_con[i].veg_class].LAI[j] = veg_con[i].LAI[j];
+             veg_lib[veg_con[i].veg_class].Wdmax[j] = LAI_WATER_FACTOR * veg_lib[veg_con[i].veg_class].LAI[j];
+             //printf("%f ",veg_lib[veg_con[i].veg_class].LAI[j]);
+             //printf("%f ",veg_lib[veg_con[i].veg_class].Wdmax[j]);
+           }
+           //printf("\n");
+          }
           //cell_cnt++;
       }
 
@@ -238,6 +248,7 @@ int main(int argc, char *argv[])
 
 #if !OUTPUT_FORCE
       /** Read Elevation Band Data if Used **/
+      //#pragma omp ordered 
       read_snowband(infiles.snowband,soil_con.gridcel,
 		    (double)soil_con.elevation, &soil_con.Tfactor, 
 		    &soil_con.Pfactor, &soil_con.AreaFract, 

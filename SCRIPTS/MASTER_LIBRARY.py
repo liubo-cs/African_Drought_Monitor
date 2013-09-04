@@ -308,7 +308,8 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  idate = date
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2000,3,1):
+ itime = datetime.datetime(2000,3,1)
+ if date < itime:
   return
 
  #If the file already exists exit:
@@ -385,13 +386,20 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  #Remove files from the workspace
  os.system('rm -f %s/3B42RT*' % workspace)
 
+ #Update the control file
+ ctl_out = '../DATA/3B42RT/DAILY/3B42RT_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('3B42RT','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  return
 
-def Download_and_Process_GFS_forecast(date,dims):
+def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
 
  gfs_hd_root = '../DATA/GFS'
- dir = '../DATA/GFS/%04d%02d%02d' % (date.year,date.month,date.day)
+ date = date + datetime.timedelta(days=1) #7-day forecast starting tomorrow
  idate = date
+ dir = '../DATA/GFS/%04d%02d%02d' % (date.year,date.month,date.day)
 
  #If the date is before the product's start date:
  date_tmp = datetime.datetime.today() - relativedelta.relativedelta(years=1)
@@ -399,6 +407,8 @@ def Download_and_Process_GFS_forecast(date,dims):
   return
 
  #If the directory already exists exit:
+ #print os.stat.getsize(dir)
+ #dir_size = os.popen('du %s' % dir).read().split()[0]
  if os.path.exists(dir) == False and Reprocess_Flag == False:
   os.system("mkdir %s" % dir)
 
@@ -406,6 +416,7 @@ def Download_and_Process_GFS_forecast(date,dims):
 
  #Establish connection to 00 forecast
  gds_file = 'http://nomads.ncdc.noaa.gov:80/dods/NCEP_GFS/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_0000_fff' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day)
+ gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs/gfs%04d%02d%02d/gfs_00z' % (date.year,date.month,date.day)
  
  #gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs_hd/gfs_hd%04d%02d%02d/gfs_hd_00z' % (date.year,date.month,date.day)
  try:
@@ -435,7 +446,8 @@ def Download_and_Process_GFS_forecast(date,dims):
   #Define the output variables
   ga("tmax = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
   ga("tmin = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
-  ga("prec = 3600*24*ave(oprate,t=%d,t=%d)" % (t1,t2))
+  #ga("prec = 3600*24*ave(oprate,t=%d,t=%d)" % (t1,t2))
+  ga("prec = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
   ga("wind = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
 
   #Set to new region
@@ -481,7 +493,8 @@ def Download_and_Process_NDVI(date,dims,Reprocess_Flag):
  modis_root = '../DATA/MOD09_NDVI/DAILY' 
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2003,1,1):
+ itime = datetime.datetime(2003,1,1)
+ if date < itime:
   return
 
  #If the file already exists exit:
@@ -617,6 +630,12 @@ def Download_and_Process_NDVI(date,dims,Reprocess_Flag):
  
  #Close the output file
  fp.close()
+
+ #Update the control file
+ ctl_out = '../DATA/MOD09_NDVI/DAILY/MOD09CMG_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('MOD09CMG','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
 
  return
 
@@ -812,7 +831,8 @@ def Regrid_and_Output_3B42rt(date,dims,Reprocess_Flag):
  file_out = '../DATA/3B42RT_RG/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
- if date < datetime.datetime(2000,3,1):
+ itime = datetime.datetime(2000,3,1)
+ if date < itime:
   return
 
  file_in = '../DATA/3B42RT/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
@@ -835,18 +855,27 @@ def Regrid_and_Output_3B42rt(date,dims,Reprocess_Flag):
  fp.close()
  ga("close 1")
 
+ #Update the control file
+ ctl_out = '../DATA/3B42RT_RG/DAILY/3B42RT_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('3B42RT','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  return
 
 def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
 
+ date = date + datetime.timedelta(days=1)
  dir = '../DATA/GFS_BC/%04d%02d%02d' % (date.year,date.month,date.day)
 
  #If the date is before the product's start date:
  if date < datetime.datetime(2012,8,14):
   return
 
+ print_info_to_command_line("Bias-correcting the gfs 7-day forecast")
+
  #If the directory already exists exit:
- if os.path.exists(dir) == False and Reprocess_Flag == False:
+ if os.path.exists(dir) == False:
   os.system("mkdir %s" % dir)
 
  dt = relativedelta.relativedelta(years=1)
@@ -859,9 +888,9 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
  vars_info = ['daily total precip (mm)','daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
  idate = date
  for t in range(7):
-
+ 
   print date
-   
+ 
   #Set info for current day
   idate_pgf = date - relativedelta.relativedelta(years=date.year - 2001)#datetime.datetime(1950,date.month,date.day)
   fdate_pgf = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
@@ -929,11 +958,18 @@ def BiasCorrect_and_Output_GFSANL_Daily(date,dims,Reprocess_Flag):
  #define parameters
  file_out = '../DATA/GFS_ANL_BC/DAILY/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
+ #Update the control file
+ itime = datetime.datetime(2008,1,1)
+ ctl_out = '../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('GFS_ANL','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  #If the file exists then exit (unless we are reprocessing the data)
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
-
- if date < datetime.datetime(2008,1,1):
+ 
+ if date < itime:
   return
 
  dt = relativedelta.relativedelta(years=1)
@@ -1057,11 +1093,18 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,Reprocess_Flag):
  #define parameters
  file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
+ #Update the control file
+ itime = datetime.datetime(2000,3,1)
+ ctl_out = '../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('3B42RT','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  #If the file exists then exit (unless we are reprocessing the data)
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
-
- if date < datetime.datetime(2000,3,1):
+ 
+ if date < itime:
   return
 
  dt = relativedelta.relativedelta(years=1)
@@ -1463,7 +1506,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
  dir0 = '../DATA/SEASONAL_FORECAST/%04d%02d' % (date.year,date.month)
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2012,1,1):
+ if date < datetime.datetime(2013,1,1):
   return
 
  #If the directory already exists exit
@@ -1826,7 +1869,7 @@ def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
  fp.write('STATEDAY %d\n' % fdate.day)
  if dataset == 'pgf':
   file_state = '../DATA/VIC/STATE_PGF/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
- if dataset == '3b42rt':
+ if dataset == '3b42rt' or dataset == 'gfs_forecast':
   file_state = '../DATA/VIC/STATE_3B42RT/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
  if dataset == 'gfsanl':
   file_state = '../DATA/VIC/STATE_GFSANL/state_%04d%02d%02d' % (idate.year,idate.month,idate.day)
@@ -1835,6 +1878,51 @@ def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
 
  #Close the file
  fp.close()
+
+def Prepare_VIC_Forcings_GFS_forecast(idate,fdate,dims):
+
+ #Forcing_Filename
+ forcing_file = '../DATA/VIC/FORCING/DAILY/forcing_daily_%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ fp = open(forcing_file,'wb')
+
+ #Extract and print data
+ date = idate
+ itime = datetime2gradstime(date)
+ dt = datetime.timedelta(days=1)
+ iday = 0
+ while date <= fdate:
+
+  print date,itime,iday
+  #Open the control file
+  iday = iday + 1
+  ctl_file = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % iday
+  ga('xdfopen %s' % ctl_file)
+
+  #Set time
+  ga("set time %s" % itime)
+  prec = np.ma.getdata(ga.exp("prec"))
+  tmax = np.ma.getdata(ga.exp("tmax-273.15"))
+  tmin = np.ma.getdata(ga.exp("tmin-273.15"))
+  wind = np.ma.getdata(ga.exp("wind"))
+
+  #Append to the outgoing file
+  prec.tofile(fp)
+  tmax.tofile(fp)
+  tmin.tofile(fp)
+  wind.tofile(fp)
+
+  #Update the time step
+  date = date + dt
+
+  #Close current gfs forecast day
+  ga("close 1")
+
+ #Close the outgoing file
+ fp.close()
+
+ return forcing_file
+
+ return
 
 def Prepare_VIC_Forcings_3B42RT(idate,fdate,dims):
   
@@ -1924,7 +2012,7 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 
 def Run_VIC(idate,fdate,dims,dataset):
 
- dt = relativedelta.relativedelta(years=1)
+ dt = relativedelta.relativedelta(years=5)
  VIC_exe = '../SOURCE/VIC_4.0.5_image_mode_openmp/VIC_dev.exe'
  VIC_global = '../WORKSPACE/Global_Parameter.txt'
 
@@ -1948,6 +2036,11 @@ def Run_VIC(idate,fdate,dims,dataset):
    idate = datetime.datetime(2010,1,1)
   if (fdate-idate).days <= 0:
    return
+ if dataset == 'gfs_forecast':
+  idate = fdate + datetime.timedelta(days=1)
+  fdate = fdate + datetime.timedelta(days=7)
+  if idate < datetime.datetime(2013,8,1):
+   return
 
  #Run model until completed 
  idate_tmp = idate
@@ -1970,13 +2063,15 @@ def Run_VIC(idate,fdate,dims,dataset):
    forcing_file = Prepare_VIC_Forcings_3B42RT(idate_tmp,fdate_tmp,dims) #3B42RT
   if dataset == 'gfsanl': 
    forcing_file = Prepare_VIC_Forcings_GFSANL(idate_tmp,fdate_tmp,dims) #GFS analysis
+  if dataset == 'gfs_forecast':
+   forcing_file = Prepare_VIC_Forcings_GFS_forecast(idate_tmp,fdate_tmp,dims) #GFS forecast
 
   #Run the model
-  print "Running VIC"
-  os.system('%s -g %s' % (VIC_exe,VIC_global))
+  #print "Running VIC"
+  #os.system('%s -g %s' % (VIC_exe,VIC_global))
 
   #Remove the forcing file
-  os.system('rm %s' % forcing_file)
+  #os.system('rm %s' % forcing_file)
 
   #Update initial time step
   idate_tmp = fdate_tmp + datetime.timedelta(days=1)

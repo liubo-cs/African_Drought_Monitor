@@ -32,10 +32,10 @@ def Download_and_BiasCorrect(date):
  ml.Download_and_Process_3b42RT(date,dims,False)
 
  #Download gfs forecast
- #ml.Download_and_Process_GFS_forecast(date,dims,False)
+ ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
- ml.Download_and_Process_NDVI(date,dims,False)
+ #ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
  ml.Download_and_Process_Seasonal_Forecast(date,False)
@@ -57,7 +57,7 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- #ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims)
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
 
  #Bias correct the seasonal forecast
  
@@ -118,8 +118,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,1,1)
-fdate = datetime.datetime(2013,9,1)
+idate = datetime.datetime(2007,1,1)
+fdate = datetime.datetime(2010,12,31)
 date = idate
 dates = []
 #while date <= fdate:
@@ -130,7 +130,7 @@ dates = []
 tic = time.clock()
 while date <= fdate:
 
- Download_and_BiasCorrect(date)
+ #Download_and_BiasCorrect(date)
  date = date + dt
 toc = time.clock()
 print toc - tic
@@ -144,9 +144,10 @@ print toc - tic
 #Run the model
 
 #Run VIC
-#ml.Run_VIC(idate,fdate,dims,'3b42rt')
+ml.Run_VIC(idate,fdate,dims,'3b42rt')
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 #ml.Run_VIC(idate,fdate,dims,'gfsanl')
+#ml.Run_VIC(idate,fdate,dims,'gfs_forecast')
 
  
 #################################################
@@ -155,4 +156,4 @@ print toc - tic
 
 #Run the VDSC model (Josh Roundy)
 
-#ml.Run_VDSC(idate,fdate,dims,'3b42rt')
+#ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'3b42rt')

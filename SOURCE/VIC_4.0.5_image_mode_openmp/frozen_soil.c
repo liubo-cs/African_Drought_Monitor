@@ -202,6 +202,8 @@ void solve_T_profile(double *T,
   double fprime;
   int    j, Done, ItCount;
 
+  #pragma omp threadprivate(A,B,C,D,E)
+
   if(FIRST_SOLN[0]) {
     FIRST_SOLN[0] = FALSE;
     for(j=1;j<Nnodes-1;j++) {

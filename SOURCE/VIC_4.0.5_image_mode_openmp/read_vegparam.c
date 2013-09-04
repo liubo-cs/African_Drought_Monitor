@@ -128,9 +128,11 @@ veg_con_struct *read_vegparam(FILE *vegparam,
 
     if ( options.GLOBAL_LAI ) {
       for ( j = 0; j < 12; j++ ) {
-	fscanf(vegparam,"%lf",&veg_lib[temp[i].veg_class].LAI[j]);
-	veg_lib[temp[i].veg_class].Wdmax[j] = 
-	  LAI_WATER_FACTOR * veg_lib[temp[i].veg_class].LAI[j];
+        fscanf(vegparam,"%lf",&temp[i].LAI[j]);
+	//fscanf(vegparam,"%lf",&veg_lib[temp[i].veg_class].LAI[j]);
+	//veg_lib[temp[i].veg_class].LAI[j] = temp[i].LAI[j];
+	//veg_lib[temp[i].veg_class].Wdmax[j] = 
+	//  LAI_WATER_FACTOR * veg_lib[temp[i].veg_class].LAI[j];
       }
     }
     if ( options.COMPUTE_TREELINE && !veg_lib[temp[i].veg_class].overstory ) 

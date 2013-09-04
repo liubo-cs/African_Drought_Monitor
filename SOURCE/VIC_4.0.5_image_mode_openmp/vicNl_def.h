@@ -422,6 +422,7 @@ typedef struct {
   float  *zone_fract;       /* fraction of roots within root zone */
   int     veg_class;        /* vegetation class reference number */
   int     vegetat_type_num; /* number of vegetation types in the grid cell */
+  double  LAI[12];          /* added to make GLOBAL_LAI option easier */  
 } veg_con_struct;
 
 /******************************************************************
