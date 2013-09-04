@@ -77,7 +77,7 @@ def Download_and_BiasCorrect(date):
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
 
- #ml.Calculate_and_Output_Streamflow_Percentiles(date,dims)
+ ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
@@ -92,7 +92,18 @@ def Download_and_BiasCorrect(date):
  #ml.Compute_Averages_SPI(date,dims,dt)
 
  #ml.Compute_Avarages_Routing(date,dims,dt)
-
+ Averages_Reprocess_Flag = True
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_PGF',"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_3B42RT',"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_PGF',"../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_3B42RT',"../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'MOD09_NDVI_MA',"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
 
  #1. Determine the period that needs to be updated
 
@@ -118,8 +129,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2007,1,1)
-fdate = datetime.datetime(2010,12,31)
+idate = datetime.datetime(1950,1,1)
+fdate = datetime.datetime(2013,8,31)
 date = idate
 dates = []
 #while date <= fdate:
@@ -130,7 +141,7 @@ dates = []
 tic = time.clock()
 while date <= fdate:
 
- #Download_and_BiasCorrect(date)
+ Download_and_BiasCorrect(date)
  date = date + dt
 toc = time.clock()
 print toc - tic
@@ -144,7 +155,7 @@ print toc - tic
 #Run the model
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims,'3b42rt')
+#ml.Run_VIC(idate,fdate,dims,'3b42rt')
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 #ml.Run_VIC(idate,fdate,dims,'gfsanl')
 #ml.Run_VIC(idate,fdate,dims,'gfs_forecast')

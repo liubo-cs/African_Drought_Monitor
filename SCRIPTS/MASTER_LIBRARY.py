@@ -1235,7 +1235,7 @@ def Calculate_and_Output_SPI(date,dims):
  
  return
 
-def Calculate_and_Output_Streamflow_Percentiles(date,dims):
+def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag):
 
  #define parameters
  root = '../DATA/ROUTING_VIC_DERIVED'
@@ -1254,7 +1254,7 @@ def Calculate_and_Output_Streamflow_Percentiles(date,dims):
  type = "all"
 
  #If the product for today exists then exit
- if os.path.exists(file_out) == True:
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
 
  #Extract the required data
@@ -1466,10 +1466,10 @@ def gradstime2datetime(str):
 
  return date
 
-def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
+def Compute_Time_Averages(ctl_in,file_out,idate,fdate,dims,open_type):
 
  #Open file in grads
- ga("xdfopen %s" % ctl_in)
+ ga("%s %s" % (open_type,ctl_in))
 
  #What variables exist in the dataset?
  qh = ga.query("file")
@@ -1492,7 +1492,9 @@ def Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims):
    t2 = datetime2gradstime(fdate)
 
    #Perform operation
-   ga("data = %s(maskout(%s,%s+900.0),time=%s,time=%s)" % (type,var,var,t1,t2))
+   #ga("data = %s(maskout(%s,%s),time=%s,time=%s)" % (type,var,var,t1,t2))
+   ga("data = %s(%s,time=%s,time=%s)" % (type,var,t1,t2))
+   ga("data = const(data,-9.99e+08,-u)")
 
    #Write to file
    data = np.ma.getdata(ga.exp("data"))
@@ -1612,7 +1614,7 @@ def Reprocess_PGF(date,dims):
  ga("close 1")
 
  return
-
+'''
 def Compute_Averages_SPI(date,dims,dt):
 
  ctl_in = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
@@ -1768,6 +1770,77 @@ def Compute_Averages_PGF(date,dims,dt,flag_rp):
   Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
 
  return
+'''
+
+def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reprocess_flag):
+
+ #Determine dataset bounds
+ ga("%s %s" % (open_type,ctl_in))
+ qh = ga.query("file")
+ vars = qh.vars
+
+ #Iterate through the variables
+ ga("set t 1")
+ itime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
+ ga("set t last")
+ ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
+ ga("close 1")
+ 
+ #If we are before or after the datasets last time step, exit
+ if date < itime or date > ftime:
+  return
+ yearly_dir = "../DATA/%s/YEARLY" % dataset
+ monthly_dir = "../DATA/%s/MONTHLY" % dataset
+
+ #Check for new month
+ ndate = date + dt
+ idate = datetime.datetime(date.year,date.month,1)
+ fdate = date
+ if date.month == ndate.month:
+  return
+
+ #If the file does not exist compute the mean
+ file_out = "../DATA/%s/MONTHLY/%s_%04d%02d_monthly_%.3fdeg.nc" % (dataset,dataset,idate.year,idate.month,dims['res'])
+ if os.path.exists(file_out) == False or reprocess_flag == True:
+
+  if os.path.exists(monthly_dir) == False:
+   os.mkdir(monthly_dir)
+  print_info_to_command_line("Computing %s monthly time averages" % dataset)
+
+  #Compute Monthly Average
+  Compute_Time_Averages(ctl_in,file_out,idate,fdate,dims,open_type)
+  
+  #Update the control file
+  ctl_out = '../DATA/%s/MONTHLY/%s_monthly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+  nt = 12*(date.year - itime.year) + max(date.month - itime.month,0) + 1
+  file_template = '^%s_%s%s_monthly_%.3fdeg.nc' % (dataset,'%y4','%m2',dims['res'])
+  Update_Control_File('nc',itime,dims,nt,'1mo',file_template,ctl_out)
+
+ #Check for new year
+ if date.year == ndate.year:
+  return
+
+ idate = datetime.datetime(date.year,1,1)
+ fdate = date
+
+ #If the file already exists exit:
+ file_out = "../DATA/%s/YEARLY/%s_%04d_yearly_%.3fdeg.nc" % (dataset,dataset,idate.year,dims['res'])
+ if os.path.exists(file_out) == False or reprocess_flag == True:
+
+  if os.path.exists(yearly_dir) == False:
+   os.mkdir(yearly_dir)
+  print_info_to_command_line("Computing %s yearly time averages" % dataset)
+
+  #Compute Annual Average
+  Compute_Time_Averages(ctl_in,file_out,idate,fdate,dims,open_type)
+
+  #Update the control file
+  ctl_out = '../DATA/%s/YEARLY/%s_yearly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+  nt = max(date.year - itime.year,0) + 1
+  file_template = '^%s_%s_yearly_%.3fdeg.nc' % (dataset,'%y4',dims['res'])
+  Update_Control_File('nc',itime,dims,nt,'1yr',file_template,ctl_out)
+
+ return
 
 def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
 
@@ -1849,11 +1922,11 @@ def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
  fp.write('VEGLIB          ../DATA/VIC/INPUT/veglib.dat\n')
  fp.write('GLOBAL_LAI      TRUE      # true if veg param file has monthly LAI\n')
  if dataset == 'pgf':
-  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_PGF/DAILY/\n')
- if dataset == '3b42rt':
-  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_3B42RT/DAILY/\n')
+  fp.write('RESULT_DIR      ../DATA/VIC_PGF/DAILY/\n')
+ if dataset == '3b42rt' or dataset == 'gfs_forecast':
+  fp.write('RESULT_DIR      ../DATA/VIC_3B42RT/DAILY/\n')
  if dataset == 'gfsanl':
-  fp.write('RESULT_DIR      ../DATA/VIC/OUTPUT_GFSANL/DAILY/\n')
+  fp.write('RESULT_DIR      ../DATA/VIC_GFSANL/DAILY/\n')
 
  # Define the state file
  #fp.write('BINARY_STATE_FILE TRUE\n')
@@ -2012,7 +2085,7 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 
 def Run_VIC(idate,fdate,dims,dataset):
 
- dt = relativedelta.relativedelta(years=5)
+ dt = relativedelta.relativedelta(years=7)
  VIC_exe = '../SOURCE/VIC_4.0.5_image_mode_openmp/VIC_dev.exe'
  VIC_global = '../WORKSPACE/Global_Parameter.txt'
 
@@ -2067,11 +2140,11 @@ def Run_VIC(idate,fdate,dims,dataset):
    forcing_file = Prepare_VIC_Forcings_GFS_forecast(idate_tmp,fdate_tmp,dims) #GFS forecast
 
   #Run the model
-  #print "Running VIC"
-  #os.system('%s -g %s' % (VIC_exe,VIC_global))
+  print "Running VIC"
+  os.system('%s -g %s' % (VIC_exe,VIC_global))
 
   #Remove the forcing file
-  #os.system('rm %s' % forcing_file)
+  os.system('rm %s' % forcing_file)
 
   #Update initial time step
   idate_tmp = fdate_tmp + datetime.timedelta(days=1)
