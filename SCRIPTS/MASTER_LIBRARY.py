@@ -1257,6 +1257,8 @@ def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag):
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
 
+ print_info_to_command_line("Computing streamflow percentiles")
+
  #Extract the required data
  var = 'flw'
  dt_up = datetime.timedelta(days=1)
@@ -1544,6 +1546,141 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
  return
 
+def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag):
+
+ #models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11}
+ models = {'CMC1-CanCM3':1,'CMC2-CanCM4':1,'COLA-RSMAS-CCSM3':1,'GFDL-CM2p1-aer04':1,'NASA-GMAO-062012':1}
+ file = '../DATA/SEASONAL_FORECAST/%04d%02d/CMC1-CanCM3_10_sf.nc' % (date.year,date.month)
+
+ #If the date is before the product's start date:
+ if date < datetime.datetime(2013,1,1):
+  return
+
+ #If the directory already exists exit
+ if os.path.exists(file) == True and Reprocess_Flag == False:
+  return
+
+ #If it before the 15th do not attempt to download
+ if date.day < 15:
+  return
+
+ #Compute anomalies and SPI
+ print_info_to_command_line("Bias-correcting and computing temperature anomalies for the Seasonal forecast")
+
+ #Change directory to run the program
+ owd = os.getcwd()
+ os.chdir('../DATA/SEASONAL_FORECAST/code')
+
+ #Write the namelist
+ fp = open('namelist','w')
+ fp.write('&nmmepar\n')
+ fp.write('wlon = %d\n' % dims['nlon'])
+ fp.write('wlat = %d\n' % dims['nlat'])
+ fp.write('slon = %.3f\n' % dims['minlon'])
+ fp.write('slat = %.3f\n' % dims['minlat'])
+ fp.write('res  = %.2f\n' % dims['res'])
+ fp.write('yr   = %d\n' % date.year)
+ fp.write('nm   = %d\n' % date.month)
+ fp.write("ext  = '../'\n")
+ fp.write("ext0 = '../../3B42RT_BC/MONTHLY//'\n")
+ fp.write('/\n')
+ fp.close()
+
+ #Run program
+ os.system('./NMME-SPI.sh >& log.txt')
+
+ #Change back to original directory
+ os.chdir(owd)
+ 
+ OUTPUT = {}
+ vars = {'pr.1':'prec','t2m.1':'t2m','spi1.2':'spi1','spi3.2':'spi3','spi6.2':'spi6','spi12.2':'spi12','t2ano.2':'t2ano'}
+ #Extract the mean of all the ensembles and models
+ for model in models:
+  OUTPUT[model] = {}
+  nens = models[model]
+  for ensemble in xrange(1,nens+1):
+   print model,ensemble
+   #Open bias corrected data
+   ctl_bc = '../DATA/SEASONAL_FORECAST/%04d%02d/%s_%d_BC.nc' % (date.year,date.month,model,ensemble)
+   ctl_sf = '../DATA/SEASONAL_FORECAST/%04d%02d/%s_%d_sf.nc' % (date.year,date.month,model,ensemble)
+   ga("sdfopen %s" % ctl_bc)
+   ga("sdfopen %s" % ctl_sf)
+   ga("set t 1 6")
+   for var in vars:
+    if ensemble == 1:
+     OUTPUT[model][var] = ga.exp(var)
+    else:
+     OUTPUT[model][var] = OUTPUT[model][var] + ga.exp(var)
+   #Close file
+   ga("close 2")
+   ga("close 1")
+  #Calculate the ensemble mean
+  for var in vars:
+   OUTPUT[model][var] = OUTPUT[model][var]/nens
+
+ #Calculate the multi model mean
+ OUTPUT['MultiModel'] = {}
+ nmodels = 0
+ for model in models:
+  nmodels = nmodels + 1
+  for var in vars:
+   if nmodels == 1:
+    OUTPUT['MultiModel'][var] = OUTPUT[model][var]
+   else:
+    OUTPUT['MultiModel'][var] = OUTPUT['MultiModel'][var] + OUTPUT[model][var]
+ for var in vars:
+  OUTPUT['MultiModel'][var] = OUTPUT['MultiModel'][var]/nmodels
+ 
+ #Output data
+ variables = ['prec','t2m','spi1','spi3','spi6','spi12','t2ano']
+ vars_info = ['Precipitation (mm)','Temperature (C)','SPI 1-month','SPI 3-month','SPI 6-month','SPI 12-month','Temperature anomaly (C)']
+ for model in OUTPUT:
+  file = '../DATA/SEASONAL_FORECAST/%04d%02d/%s_%04d%02d_monthly.nc' % (date.year,date.month,model,date.year,date.month)
+  nt = 6
+  tstep = 'months'
+  #Create file
+  fp = Create_NETCDF_File(dims,file,variables,vars_info,date,tstep,nt)
+  #Write to file
+  for t in xrange(0,6):
+   for var in vars:
+    fp.variables[vars[var]][t] = OUTPUT[model][var][t,:,:]
+  #Close file
+  fp.close()
+
+  #Create control file
+  idate = datetime.datetime(2013,1,1)
+  fdate = date
+  nmonths = 12*(fdate.year - idate.year) + max(fdate.month-idate.month,0) + 1
+  ctl = '../DATA/SEASONAL_FORECAST/CTL/%s.ctl' % model
+  fp = open(ctl,'w')
+  fp.write('dset ^../%s/%s_%s_monthly.nc\n' % ('%e',model,'%e'))
+  fp.write('options template\n')
+  fp.write('dtype netcdf\n')
+  fp.write('title Seasonal Forecast %s\n' % model)
+  fp.write('undef -9.99e+08\n')
+  fp.write('xdef %d  linear %f %f\n' % (dims['nlon'],dims['minlon'],dims['res']))
+  fp.write('ydef %d  linear %f %f\n' % (dims['nlat'],dims['minlat'],dims['res']))
+  fp.write('tdef %d linear 00Z01%s%d 1mo\n' % (nmonths+6,idate.strftime('%b'),idate.year))
+  fp.write('zdef 1 linear 1 1\n')
+  fp.write('edef %d\n' % nmonths)
+  date_tmp = idate
+  while date_tmp <= fdate:
+   fp.write('%04d%02d 6 00Z01%s%d 1mo\n' % (date_tmp.year,date_tmp.month,date_tmp.strftime('%b'),date_tmp.year))
+   date_tmp = date_tmp + relativedelta.relativedelta(months=1)
+  fp.write('endedef\n')
+  fp.write('vars 7\n')
+  fp.write('spi1 1 t,y,x data\n')
+  fp.write('spi3 1 t,y,x data\n')
+  fp.write('spi6 1 t,y,x data\n')
+  fp.write('spi12 1 t,y,x data\n')
+  fp.write('prec 1 t,y,x data\n')
+  fp.write('t2ano 1 t,y,x data\n')
+  fp.write('t2m 1 t,y,x data\n')
+  fp.write('endvars\n')
+  fp.close()
+
+ return
+
 def print_info_to_command_line(line):
 
  print "\n"
@@ -1614,163 +1751,6 @@ def Reprocess_PGF(date,dims):
  ga("close 1")
 
  return
-'''
-def Compute_Averages_SPI(date,dims,dt):
-
- ctl_in = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
-
- #Check for new month
- ndate = date + dt
- idate = datetime.datetime(date.year,date.month,1)
- fdate = date
- if date.month == ndate.month:
-  return
-
- #Determine if the date is before the beginning of the product
- if date < datetime.datetime(1950,1,1):
-  return
-
- #If the file already exists exit:
- file_out = "../DATA/SPI/MONTHLY/spi_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Comput Monthly Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- #Check for new year
- if date.year == ndate.year:
-  return
-
- idate = datetime.datetime(date.year,1,1)
- fdate = date
-
- #If the file already exists exit:
- file_out = "../DATA/SPI/YEARLY/spi_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Compute Annual Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- return
-
-def Compute_Averages_SM_Percentiles(date,dims,dt):
- 
- ctl_in = '../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl'
-
- #Check for new month
- ndate = date + dt
- idate = datetime.datetime(date.year,date.month,1)
- fdate = date
- if date.month == ndate.month:
-  return
-
- #Determine if the date is before the beginning of the product
- if date < datetime.datetime(1950,1,1):
-  return
-
- #If the file already exists exit:
- file_out = "../DATA/VIC_DERIVED/MONTHLY/vic_derived_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Comput Monthly Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- #Check for new year
- if date.year == ndate.year:
-  return
-
- idate = datetime.datetime(date.year,1,1)
- fdate = date
-
- #If the file already exists exit:
- file_out = "../DATA/VIC_DERIVED/YEARLY/vic_derived_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Compute Annual Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- return
-
-def Compute_Averages_3b42RT_BC(date,dims,dt):
-
- ctl_in = "../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl"
-
- #Check for new month
- ndate = date + dt
- idate = datetime.datetime(date.year,date.month,1)
- fdate = date
- if date.month == ndate.month:
-  return
-
- #Determine if the date is before the beginning of the product
- if date < datetime.datetime(2000,3,1):
-  return
-
- #If the file already exists exit:
- file_out = "../DATA/3B42RT_BC/MONTHLY/3B42RT_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Comput Monthly Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- #Check for new year
- if date.year == ndate.year:
-  return
-
- idate = datetime.datetime(date.year,1,1)
- fdate = date
-
- #If the file already exists exit:
- file_out = "../DATA/3B42RT_BC/YEARLY/3B42RT_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
- if os.path.exists(file_out) == False:
-
-  #Compute Annual Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- return
-
-def Compute_Averages_PGF(date,dims,dt,flag_rp):
-
- ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
-
- #Check for new month
- ndate = date + dt
- idate = datetime.datetime(date.year,date.month,1)
- fdate = date
- if date.month == ndate.month:
-  return
-
- #Determine if the date is before the beginning of the product
- if date < datetime.datetime(1948,1,1):
-  return
- 
- #Determine if the date is after the end of the product
- if date > datetime.datetime(2008,12,31):
-  return
-
- #If the file already exists exit:
- file_out = "../DATA/PGF/MONTHLY/pgf_%04d%02d_monthly_%.3fdeg.nc" % (idate.year,idate.month,dims['res'])
- if os.path.exists(file_out) == False and flag_rp != 'rp':
-
-  #Comput Monthly Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- #Check for new year
- if date.year == ndate.year:
-  return
-
- idate = datetime.datetime(date.year,1,1)
- fdate = date
-
- #If the file already exists exit:
- file_out = "../DATA/PGF/YEARLY/pgf_%04d_yearly_%.3fdeg.nc" % (idate.year,dims['res'])
- if os.path.exists(file_out) == False and flag_rp != 'rp':
-
-  #Compute Annual Average
-  Compute_and_Output_Averages(ctl_in,file_out,idate,fdate,dims)
-
- return
-'''
 
 def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reprocess_flag):
 
@@ -2133,7 +2113,7 @@ def Run_VIC(idate,fdate,dims,dataset):
   if dataset == 'pgf':
    forcing_file = Prepare_VIC_Forcings_Historical(idate_tmp,fdate_tmp,dims) #Historical
   if dataset == '3b42rt':
-   forcing_file = Prepare_VIC_Forcings_3B42RT(idate_tmp,fdate_tmp,dims) #3B42RT
+   forcing_file = Prepare_VIC_Forcings_3B42RT(idate_tmp,fdate_tmp,dims) #Historical
   if dataset == 'gfsanl': 
    forcing_file = Prepare_VIC_Forcings_GFSANL(idate_tmp,fdate_tmp,dims) #GFS analysis
   if dataset == 'gfs_forecast':

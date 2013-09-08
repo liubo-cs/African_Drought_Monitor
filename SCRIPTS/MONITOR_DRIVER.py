@@ -76,6 +76,7 @@ def Download_and_BiasCorrect(date):
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
+ ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
 
  ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
 
@@ -92,7 +93,7 @@ def Download_and_BiasCorrect(date):
  #ml.Compute_Averages_SPI(date,dims,dt)
 
  #ml.Compute_Avarages_Routing(date,dims,dt)
- Averages_Reprocess_Flag = True
+ Averages_Reprocess_Flag = False#True
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
@@ -129,8 +130,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(1950,1,1)
-fdate = datetime.datetime(2013,8,31)
+idate = datetime.datetime(2013,8,15)
+fdate = datetime.datetime(2013,8,15)
 date = idate
 dates = []
 #while date <= fdate:
