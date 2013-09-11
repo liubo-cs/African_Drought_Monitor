@@ -32,7 +32,7 @@ def Download_and_BiasCorrect(date):
  ml.Download_and_Process_3b42RT(date,dims,False)
 
  #Download gfs forecast
- ml.Download_and_Process_GFS_forecast(date,dims,False)
+ #ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
  #ml.Download_and_Process_NDVI(date,dims,False)
@@ -41,7 +41,7 @@ def Download_and_BiasCorrect(date):
  ml.Download_and_Process_Seasonal_Forecast(date,False)
 
  #Download and process the gfs analysis data
- ml.Download_and_Process_GFS_Analysis(date,dims,False)
+ #ml.Download_and_Process_GFS_Analysis(date,dims,False)
 
  #################################################
  #BIAS CORRECT THE DOWNLOADED DATA
@@ -57,28 +57,28 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
+ #ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
 
  #Bias correct the seasonal forecast
  
  #Compute different moving averages of the ndvi product
- ml.Compute_NDVI_moving_average(date,dims,False)
+ #ml.Compute_NDVI_moving_average(date,dims,False)
 
  #Bias correct the gfs analysis product
- ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
+ #ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
 
  #################################################
  #COMPUTE INDICES
  #################################################
 
- #ml.Calculate_and_Output_SPI(date,dims)
+ ml.Calculate_and_Output_SPI(date,dims)
 
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
- ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
+ #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
 
- ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
+ #ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
@@ -94,17 +94,17 @@ def Download_and_BiasCorrect(date):
 
  #ml.Compute_Avarages_Routing(date,dims,dt)
  Averages_Reprocess_Flag = False#True
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_PGF',"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_3B42RT',"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_PGF',"../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_3B42RT',"../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'MOD09_NDVI_MA',"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_PGF',"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_3B42RT',"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_PGF',"../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_3B42RT',"../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'MOD09_NDVI_MA',"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
 
  #1. Determine the period that needs to be updated
 
@@ -130,8 +130,8 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,8,15)
-fdate = datetime.datetime(2013,8,15)
+idate = datetime.datetime(2013,7,15)
+fdate = datetime.datetime(2013,7,15)
 date = idate
 dates = []
 #while date <= fdate:

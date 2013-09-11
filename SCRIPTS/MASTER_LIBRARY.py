@@ -1765,6 +1765,7 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
  ga("set t last")
  ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
  ga("close 1")
+ print itime,ftime
  
  #If we are before or after the datasets last time step, exit
  if date < itime or date > ftime:
