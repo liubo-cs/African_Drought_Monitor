@@ -1,0 +1,11 @@
+&nmmepar
+wlon = 296
+wlat = 292
+slon = -18.875
+slat = -34.875
+res  = 0.25
+yr   = 2013
+nm   = 8
+ext  = '../'
+ext0 = '../../3B42RT_BC/MONTHLY//'
+/

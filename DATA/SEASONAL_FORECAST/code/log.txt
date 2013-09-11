@@ -1,0 +1,45 @@
+NMME-SPI.f90(1675): error #7002: Error in opening the compiled module file.  Check INCLUDE paths.   [NETCDF]
+use netcdf
+----^
+NMME-SPI.f90(1715): error #6404: This name does not have a type, and must have an explicit type.   [NF90_OPEN]
+call check( nf90_open(trim(ext)//'hindcast/landmask.nc', NF90_NOWRITE, ncid1) )
+------------^
+NMME-SPI.f90(1716): error #6404: This name does not have a type, and must have an explicit type.   [NF90_INQ_VARID]
+call check( nf90_inq_varid(ncid1, 'PR', varid1) )
+------------^
+NMME-SPI.f90(1717): error #6404: This name does not have a type, and must have an explicit type.   [NF90_GET_VAR]
+call check( nf90_get_var(ncid1, varid1, lcc) )
+------------^
+NMME-SPI.f90(1718): error #6404: This name does not have a type, and must have an explicit type.   [NF90_CLOSE]
+call check( nf90_close(ncid1) )
+------------^
+NMME-SPI.f90(1882): error #6404: This name does not have a type, and must have an explicit type.   [NF90_CREATE]
+      call check( nf90_create(trim(ext)//cyr//cmon//'/'//trim(model(kk))//'_'//trim(adjustl(cens))//'_BC.nc', nf90_netcdf4, ncid) )
+------------------^
+NMME-SPI.f90(1883): error #6404: This name does not have a type, and must have an explicit type.   [NF90_DEF_DIM]
+      call check( nf90_def_dim(ncid, 'lon',  wlon, lon_dimid) )
+------------------^
+NMME-SPI.f90(1888): error #6404: This name does not have a type, and must have an explicit type.   [NF90_DEF_VAR]
+         call check( nf90_def_var(ncid, varname(i), NF90_REAL,  dimids(1:3), varid(i), deflate_level = 1) )
+---------------------^
+NMME-SPI.f90(1889): error #6404: This name does not have a type, and must have an explicit type.   [NF90_PUT_ATT]
+         call check( nf90_put_att(ncid, varid(i), 'long_name',  vardesc(i)) )
+---------------------^
+NMME-SPI.f90(1907): error #6404: This name does not have a type, and must have an explicit type.   [NF90_ENDDEF]
+      call check( nf90_enddef(ncid) )
+------------------^
+NMME-SPI.f90(1909): error #6404: This name does not have a type, and must have an explicit type.   [NF90_PUT_VAR]
+         call check( nf90_put_var(ncid, varid(i), var1(:,:,:,nkk,i)) )
+---------------------^
+NMME-SPI.f90(2061): error #6404: This name does not have a type, and must have an explicit type.   [NF90_NOERR]
+  if(status /= nf90_noerr) then
+---------------^
+NMME-SPI.f90(2062): error #6404: This name does not have a type, and must have an explicit type.   [NF90_STRERROR]
+     print *, trim(nf90_strerror(status))
+-------------------^
+NMME-SPI.f90(2062): error #6362: The data types of the argument(s) are invalid.   [TRIM]
+     print *, trim(nf90_strerror(status))
+-------------------^
+compilation aborted for NMME-SPI.f90 (code 1)
+./NMME-SPI.sh: line 9: ./NMME-SPI.exe: No such file or directory
+rm: cannot remove `NMME-SPI.exe': No such file or directory

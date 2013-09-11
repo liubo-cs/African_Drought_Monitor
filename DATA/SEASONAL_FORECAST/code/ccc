@@ -1,0 +1,7 @@
+#!/bin/bash
+ulimit -s unlimited
+#/opt/intel/composer_xe_2013/bin/ifort -g -traceback -fpe0 -CB test.f90 -L/home/freeze/water_monitor/African_Drought_Monitor/LIBRARIES/netcdf-4.1.1/netcdf-4.1.1/lib -lnetcdff -lnetcdf -I/home/freeze/water_monitor/African_Drought_Monitor/LIBRARIES/netcdf-4.1.1/netcdf-4.1.1/include -o test.exe
+ifort test.f90 -L/usr/local/lib -lnetcdf -lhdf5_hl -lhdf5 -lz -lm -lcurl -I/usr/local/include -o test.exe
+#gfortran test.f90 -I/usr/lib64/gfortran/modules -lnetcdff -o test.exe
+#./test.exe
+#rm test.exe
