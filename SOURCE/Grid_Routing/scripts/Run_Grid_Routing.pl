@@ -14,7 +14,7 @@ my $res = "900s"; #Resolution given in arc seconds
 
 # Directory Inputs
 #my $baseDir = "/home/raid20/jroundy/Grid_Routing";
-my $baseDir = "/home/freeze/water_monitor/African_Drought_Monitor/SOURCE/Grid_Routing";
+my $baseDir = "/home/stream1/monitor/African_Drought_Monitor/SOURCE/Grid_Routing";
 my $GISDir = "$baseDir/GIS/${basin}_$res";
 
 # Time Inputs
@@ -37,7 +37,7 @@ if($basin eq 'AFR')
 {
   # Africa
   #$modDir = "/home/raid20/nchaney/ADM_FOLLOW/Africa_Drought_Monitor/Data/Historical/VIC_output/output_grid_";
-  #$modDir = "/home/freeze/water_monitor/African_Drought_Monitor/DATA/VIC/OUTPUT/DAILY/output_grid_";
+  #$modDir = "/home/stream1/monitor/African_Drought_Monitor/DATA/VIC/OUTPUT/DAILY/output_grid_";
   $mtd = 2; #Model output time step, 1-monthly, 2-daily
   $nvr = 21; # number of variables in the model output file
   $rid = 3; # variable number for runoff

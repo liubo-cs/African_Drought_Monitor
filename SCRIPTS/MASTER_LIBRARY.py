@@ -15,19 +15,14 @@ import fileinput
 import netCDF4 as netcdf
 import pyhdf.SD as sd
 import library_f90
-#import matplotlib.pyplot as plt
 import scipy.stats as ss
 import subprocess
 import dateutil.relativedelta as relativedelta
-#from cython.parallel import prange
 import time
 import random
 import cPickle as pickle
-#grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/opengrads'
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
-#Reprocess_Flag = False
-
 
 def Create_NETCDF_File(dims,file,vars,vars_info,tinitial,tstep,nt):
 
@@ -400,6 +395,9 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
  date = date + datetime.timedelta(days=1) #7-day forecast starting tomorrow
  idate = date
  dir = '../DATA/GFS/%04d%02d%02d' % (date.year,date.month,date.day)
+ dir_derived = '../DATA/GFS_DERIVED/%04d%02d%02d' % (idate.year,idate.month,idate.day)
+ if os.path.exists(dir_derived) == False:
+  os.mkdir(dir_derived)
 
  #If the date is before the product's start date:
  date_tmp = datetime.datetime.today() - relativedelta.relativedelta(years=1)
@@ -901,6 +899,17 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
   ctl_gfs = "../DATA/GFS/gfs_daily_0.250deg_day%d.ctl" % (t+1)
   file = dir + '/gfs_%04d%02d%02d_daily_%.3fdeg_day%d.nc' % (idate.year,idate.month,idate.day,dims['res'],t+1)
 
+  #Update control file
+  date_ctl = datetime.datetime(2012,8,14)
+  ndays = (idate - date_ctl).days + 1
+  ctl_new = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
+  fp = open(ctl_new,'w')
+  fp.write('dset ^%s%s%s/gfs_%s%s%s_daily_0.250deg_day%d.nc\n' % ('%y4','%m2','%d2','%y4','%m2','%d2',t+1))
+  fp.write('options template\n')
+  fp.write('dtype netcdf\n')
+  fp.write('tdef t %d linear 14aug2012 1dy\n' % ndays)
+  fp.close()
+
   #Determine if we skip the time step
   if os.path.exists(file) == True and Reprocess_Flag == False:
    date = date + datetime.timedelta(days=1)
@@ -938,15 +947,15 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
   fp.close()
 
   #Update control file
-  date_ctl = datetime.datetime(2012,8,14)
-  ndays = (idate - date_ctl).days + 1
-  ctl_new = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
-  fp = open(ctl_new,'w')
-  fp.write('dset ^%s%s%s/gfs_%s%s%s_daily_0.250deg_day%d.nc\n' % ('%y4','%m2','%d2','%y4','%m2','%d2',t+1))
-  fp.write('options template\n')
-  fp.write('dtype netcdf\n')
-  fp.write('tdef t %d linear 14aug2012 1dy\n' % ndays)
-  fp.close()
+  #date_ctl = datetime.datetime(2012,8,14)
+  #ndays = (idate - date_ctl).days + 1
+  #ctl_new = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
+  #fp = open(ctl_new,'w')
+  #fp.write('dset ^%s%s%s/gfs_%s%s%s_daily_0.250deg_day%d.nc\n' % ('%y4','%m2','%d2','%y4','%m2','%d2',t+1))
+  #fp.write('options template\n')
+  #fp.write('dtype netcdf\n')
+  #fp.write('tdef t %d linear 14aug2012 1dy\n' % ndays)
+  #fp.close()
 
   #Update the time step
   date = date + datetime.timedelta(days=1)
@@ -1548,8 +1557,8 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
 def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag):
 
- #models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11}
- models = {'CMC1-CanCM3':1,'CMC2-CanCM4':1,'COLA-RSMAS-CCSM3':1,'GFDL-CM2p1-aer04':1,'NASA-GMAO-062012':1}
+ models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11}
+ #models = {'CMC1-CanCM3':1,'CMC2-CanCM4':1,'COLA-RSMAS-CCSM3':1,'GFDL-CM2p1-aer04':1,'NASA-GMAO-062012':1}
  file = '../DATA/SEASONAL_FORECAST/%04d%02d/CMC1-CanCM3_10_sf.nc' % (date.year,date.month)
 
  #If the date is before the product's start date:
@@ -1587,7 +1596,7 @@ def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag)
  fp.close()
 
  #Run program
- os.system('./NMME-SPI.sh >& log.txt')
+ #os.system('./NMME-SPI.sh >& log.txt')
 
  #Change back to original directory
  os.chdir(owd)
@@ -1904,20 +1913,22 @@ def Prepare_VIC_Global_Parameter_File(idate,fdate,dims,dataset):
  fp.write('GLOBAL_LAI      TRUE      # true if veg param file has monthly LAI\n')
  if dataset == 'pgf':
   fp.write('RESULT_DIR      ../DATA/VIC_PGF/DAILY/\n')
- if dataset == '3b42rt' or dataset == 'gfs_forecast':
+ if dataset == '3b42rt':
   fp.write('RESULT_DIR      ../DATA/VIC_3B42RT/DAILY/\n')
  if dataset == 'gfsanl':
   fp.write('RESULT_DIR      ../DATA/VIC_GFSANL/DAILY/\n')
+ if dataset == 'gfs_forecast':
+  fp.write('RESULT_DIR      ../DATA/GFS_DERIVED/%04d%02d%02d/\n' % (idate.year,idate.month,idate.day))
 
  # Define the state file
- #fp.write('BINARY_STATE_FILE TRUE\n')
- #fp.write('STATE_GZIP        TRUE\n')
  if dataset == 'pgf':
   fp.write('STATENAME ../DATA/VIC/STATE_PGF/state\n')
  if dataset == '3b42rt':
   fp.write('STATENAME ../DATA/VIC/STATE_3B42RT/state\n')
  if dataset == 'gfsanl':
   fp.write('STATENAME ../DATA/VIC/STATE_GFSANL/state\n')
+ if dataset == 'gfsforecast':
+  fp.write('STATENAME ../DATA/GFS_DERIVED/%04d%02d%02d/\n' % (idate.year,idate.month,idate.day))
  fp.write('STATEYEAR %d\n' % fdate.year)
  fp.write('STATEMONTH %d\n' % fdate.month)
  fp.write('STATEDAY %d\n' % fdate.day)
@@ -1950,6 +1961,7 @@ def Prepare_VIC_Forcings_GFS_forecast(idate,fdate,dims):
   #Open the control file
   iday = iday + 1
   ctl_file = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % iday
+  print ctl_file
   ga('xdfopen %s' % ctl_file)
 
   #Set time
@@ -2191,6 +2203,13 @@ def Run_VDSC(idate,fdate,dims,dataset):
   input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_GFSANL/DAILY'
   state_dir = '../DATA/ROUTING_VIC_GFSANL/STATE'
+ if dataset == 'gfs_forecast':
+  idate = fdate + datetime.timedelta(days=1)
+  fdate = idate + datetime.timedelta(days=6)
+  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
+  output_dir = '../DATA/GFS_DERIVED/%04d%02d%02d/' % (idate.year,idate.month,idate.day)
+  state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
+
  #Add current directory info
  input_dir = os.getcwd() + '/' + input_dir
  output_dir = os.getcwd() + '/' + output_dir

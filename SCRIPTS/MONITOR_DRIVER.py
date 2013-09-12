@@ -15,9 +15,8 @@ import os
 import dateutil.relativedelta as relativedelta
 import time
 
-def Download_and_BiasCorrect(date):
+def Download_and_Process(date):
 
- print date
  #################################################
  #DOWNLOAD AND PREPROCESS ALL THE REQUIRED DATA
  #################################################
@@ -32,7 +31,7 @@ def Download_and_BiasCorrect(date):
  ml.Download_and_Process_3b42RT(date,dims,False)
 
  #Download gfs forecast
- #ml.Download_and_Process_GFS_forecast(date,dims,False)
+ ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
  #ml.Download_and_Process_NDVI(date,dims,False)
@@ -42,6 +41,10 @@ def Download_and_BiasCorrect(date):
 
  #Download and process the gfs analysis data
  #ml.Download_and_Process_GFS_Analysis(date,dims,False)
+
+ return
+
+def BiasCorrect(date):
 
  #################################################
  #BIAS CORRECT THE DOWNLOADED DATA
@@ -57,7 +60,7 @@ def Download_and_BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- #ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
 
  #Bias correct the seasonal forecast
  
@@ -67,35 +70,36 @@ def Download_and_BiasCorrect(date):
  #Bias correct the gfs analysis product
  #ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
 
+ return
+
+def Compute_Indices(date):
+
  #################################################
  #COMPUTE INDICES
  #################################################
 
- ml.Calculate_and_Output_SPI(date,dims)
+ #ml.Calculate_and_Output_SPI(date,dims)
 
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
  #ml.Calculate_and_Output_SM_Percentiles(date,dims)
- #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
+
+ ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
 
  #ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
+
+ return
+
+def Compute_Averages(date):
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
  #################################################
 
- #ml.Compute_Averages_3b42RT_BC(date,dims,dt)
-
- #ml.Compute_Averages_PGF(date,dims,dt,'standard')
-
- #ml.Compute_Averages_SM_Percentiles(date,dims,dt)
-
- #ml.Compute_Averages_SPI(date,dims,dt)
-
  #ml.Compute_Avarages_Routing(date,dims,dt)
  Averages_Reprocess_Flag = False#True
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_PGF',"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_3B42RT',"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
@@ -105,17 +109,6 @@ def Download_and_BiasCorrect(date):
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  #ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
-
- #1. Determine the period that needs to be updated
-
- #2. Download all the relevant data
- 
- #3. Process all the relevant data
-
- #4. Run all the relevant models
-
- #Create the runoff files for routing
- #ml.Extract_VIC_Baseflow_and_Runoff(date,dims)
 
  return
 
@@ -130,22 +123,43 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,7,15)
-fdate = datetime.datetime(2013,7,15)
-date = idate
+idate = datetime.datetime(2013,8,31)
+fdate = datetime.datetime(2013,8,31)
 dates = []
 #while date <= fdate:
 # dates.append(date)
 # date = date + dt
 
-#SERVER SECTION
-tic = time.clock()
+#Download and bias correct data
+date = idate
 while date <= fdate:
-
- Download_and_BiasCorrect(date)
+ Download_and_Process(date)
+ BiasCorrect(date)
  date = date + dt
-toc = time.clock()
-print toc - tic
+
+#Run VIC
+#ml.Run_VIC(idate,fdate,dims,'3b42rt')
+#ml.Run_VIC(idate,fdate,dims,'pgf')
+#ml.Run_VIC(idate,fdate,dims,'gfs_forecast')
+
+#Run the Routing model
+#ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'pgf')
+#ml.Run_VDSC(idate,fdate,dims,'3b42rt')
+ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
+
+#Compute Indices
+date = idate
+while date <= fdate:
+ Compute_Indices(date) 
+ date = date + dt
+
+#Compute Averages
+date = idate
+while date <= fdate:
+ Compute_Averages(date)
+ date = date + dt
+
+ 
 
 #ml.Finalize_NCEP_FNL_Connection()
 

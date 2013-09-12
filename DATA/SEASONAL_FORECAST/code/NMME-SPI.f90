@@ -1681,6 +1681,7 @@ integer :: start(dims),count(dims),dimids(dims)
 integer lon_dimid, lat_dimid, fcst_dimid, ens_dimid, mod_dimid, year_dimid, bmon_dimid
 integer cnt,tnm,ntag,ens1(nparam),spilead(4),yr1,nm1,day(12),nday
 data ens1/6,10,11,10,10/,spilead/1,3,6,12/,day/31,28,31,30,31,30,31,31,30,31,30,31/
+!data ens1/1,1,1,1,1/,spilead/1,3,6,12/,day/31,28,31,30,31,30,31,31,30,31,30,31/
 character(len=*),parameter::model(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012','CMC1-CanCM3','CMC2-CanCM4'/), &
                             vcase(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1','NASA-GMAO','CMC1-CanCM3','CMC2-CanCM4'/), &
                             varname(nvar) = (/'PR','T2M'/), &
@@ -1937,6 +1938,7 @@ do k=1,11
    endif
    write(cyr1,'(i4)') yr1
    write(cmon1,'(i2.2)') nm1
+   print*,yr1,nm1
    call check( nf90_open(trim(ext0)//'3B42RT_BC_'//cyr1//cmon1//'_monthly_0.250deg.nc', NF90_NOWRITE, ncid) )
    call check( nf90_inq_varid(ncid, 'prec', varid1) )
    start(1:3)=(/1,1,1/);  count(1:3)=(/wlon,wlat,1/)
@@ -1960,7 +1962,8 @@ do i=1,wlon
                      var2(31)=0.
                      if(k<spilead(ii))then
                         do kkk=1,spilead(ii)-k
-                           var2(31)=var2(31)+ovar(i,j,12-kkk)
+                           !var2(31)=var2(31)+ovar(i,j,12-kkk)
+                           var2(31)=var2(31)+ovar(i,j,kkk)
                         end do
                         do kkk=1,k
                            var2(31)=var2(31)+var1(i,j,k-kkk+1,kk,1)
