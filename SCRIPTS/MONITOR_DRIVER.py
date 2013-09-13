@@ -31,7 +31,7 @@ def Download_and_Process(date):
  ml.Download_and_Process_3b42RT(date,dims,False)
 
  #Download gfs forecast
- ml.Download_and_Process_GFS_forecast(date,dims,False)
+ #ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
  #ml.Download_and_Process_NDVI(date,dims,False)
@@ -68,7 +68,7 @@ def BiasCorrect(date):
  #ml.Compute_NDVI_moving_average(date,dims,False)
 
  #Bias correct the gfs analysis product
- #ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
+ ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
 
  return
 
@@ -78,15 +78,29 @@ def Compute_Indices(date):
  #COMPUTE INDICES
  #################################################
 
- #ml.Calculate_and_Output_SPI(date,dims)
+ ml.Calculate_and_Output_SPI(date,dims,'monitor',date,False)
 
  #ml.Calculate_and_Output_NDVI_Percentiles(date,dims)
 
- #ml.Calculate_and_Output_SM_Percentiles(date,dims)
+ ml.Calculate_and_Output_SM_Percentiles(date,dims,'monitor',date,True)
 
+ #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
+
+ ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False,'monitor',date)
+
+ return
+
+def Compute_Forecast_Indices(date,idate):
+
+ ml.print_info_to_command_line("Computing forecast indices for %d/%d/%d" % (date.day,date.month,date.year))
+
+ ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,True,'forecast',idate)
+
+ ml.Calculate_and_Output_SM_Percentiles(date,dims,'forecast',idate,True)
+
+ ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,True)
+ 
  ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
-
- #ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False)
 
  return
 
@@ -133,7 +147,7 @@ dates = []
 #Download and bias correct data
 date = idate
 while date <= fdate:
- Download_and_Process(date)
+ #Download_and_Process(date)
  BiasCorrect(date)
  date = date + dt
 
@@ -145,21 +159,29 @@ while date <= fdate:
 #Run the Routing model
 #ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'pgf')
 #ml.Run_VDSC(idate,fdate,dims,'3b42rt')
-ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
+#ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
 
-#Compute Indices
+#Compute Monitor Indices
 date = idate
 while date <= fdate:
- Compute_Indices(date) 
+ #print date
+ #Compute_Indices(date) 
+ date = date + dt
+
+#Compute Forecast Indices
+date = fdate + datetime.timedelta(days=1)
+while date <= fdate + 7*dt:
+ #Compute_Forecast_Indices(date,fdate + dt)
  date = date + dt
 
 #Compute Averages
 date = idate
 while date <= fdate:
- Compute_Averages(date)
+ #Compute_Averages(date)
  date = date + dt
 
- 
+#Finalize GFS forecast
+ml.Finalize_GFS_forecast(fdate+datetime.timedelta(days=1),dims)
 
 #ml.Finalize_NCEP_FNL_Connection()
 

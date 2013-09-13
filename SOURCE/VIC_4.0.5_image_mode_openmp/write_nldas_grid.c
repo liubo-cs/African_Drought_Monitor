@@ -144,10 +144,10 @@ void write_data_nldas_grid(out_data_struct *out_data,
       //fprintf(stderr, "Output file size %.0f bytes.\n", output_bytes);
       if (!options.OUTPUT_PER_STEP) {
           output_bytes = options.OUTPUT_GRID_NX*options.OUTPUT_GRID_NY*nvars*nrecs*sizeof(float)*1.0;
-          if (output_bytes >= 2.147483648e+9) {
-              fprintf(stderr, "Output file size %.0f bytes exceeds 2GB limit for ext filesystem. Reset OUTPUT_PER_STEP to TRUE.\n", output_bytes);
-              options.OUTPUT_PER_STEP = TRUE;
-          }
+          //if (output_bytes >= 2.147483648e+9) {
+          //    fprintf(stderr, "Output file size %.0f bytes exceeds 2GB limit for ext filesystem. Reset OUTPUT_PER_STEP to TRUE.\n", output_bytes);
+          //    options.OUTPUT_PER_STEP = TRUE;
+          //}
       }
       
       /* Allocate memory for tmp_out */

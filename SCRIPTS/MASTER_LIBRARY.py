@@ -1162,7 +1162,7 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,Reprocess_Flag):
 
  return
 
-def Calculate_and_Output_SPI(date,dims):
+def Calculate_and_Output_SPI(date,dims,dataset,idate,Reprocess_Flag):
 
  #define parameters
  itime = datetime.datetime(1950,1,1)
@@ -1172,12 +1172,20 @@ def Calculate_and_Output_SPI(date,dims):
   ctl_in = "../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl"
  else:
   return
- file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ if dataset == 'forecast':
+  ctl_in_forecast = "../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00.ctl" % (idate.year,idate.month,idate.day,idate.year,idate.month,idate.day)
+
+ #Define output and ctl files
+ if dataset == 'monitor':
+  file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
+ elif dataset == 'forecast':
+  itime = idate
+  file_out = '../DATA/GFS_DERIVED/%04d%02d%02d/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/GFS_DERIVED/%04d%02d%02d/spi_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+
  #Precipitation dataset
- #ctl_in = "../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl"
  dt = relativedelta.relativedelta(years=1)
- #idate_clim = datetime.datetime(1950,date.month,date.day)
- #fdate_clim = datetime.datetime(2008,date.month,date.day)
  idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)#datetime.datetime(1950,date.month,date.day)
  fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)#datetime.datetime(2008,date.month,date.day)
  idate_tstep = date
@@ -1186,8 +1194,13 @@ def Calculate_and_Output_SPI(date,dims):
  dt_up = relativedelta.relativedelta(days=0)
  type = "ave"
 
+ #Update the control file
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('SPI','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  #If the product for today exists then exit
- if os.path.exists(file_out) == True:
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
 
  spi = []
@@ -1209,18 +1222,17 @@ def Calculate_and_Output_SPI(date,dims):
    print "Saving the climatology data to storage"
    pickle.dump(data_clim,open(file_climatology,'wb'))
   #Extract the period we are interested in 
-  data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type,'xdfopen')
+  if dataset == 'monitor':
+   data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type,'xdfopen')
+  if dataset == 'forecast':
+   data_obs = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in,var,type,'xdfopen')
+   data = Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,ctl_in_forecast,var,type,'open')
+   data[-nt:,:,:] = data_obs[-nt:,:,:]
 
   #Calculate SPI
   print "Calculating the SPI"
   spi.append(Calculate_SPI(data_clim,data))
 
- #Update the control file
- ctl_out = '../DATA/SPI/DAILY/spi_daily_0.25deg.ctl'
- nt = (date - itime).days + 1
- file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('SPI','%y4','%m2','%d2')
- Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
- 
  #Create files and output all the data
  nt = 1
  tstep = 'days'
@@ -1231,7 +1243,7 @@ def Calculate_and_Output_SPI(date,dims):
   vars_info.append('%d month SPI' % spi_month)
 
  #Create file
- file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ #file_out = '../DATA/SPI/DAILY/SPI_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
 
  #Write to file
@@ -1244,7 +1256,7 @@ def Calculate_and_Output_SPI(date,dims):
  
  return
 
-def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag):
+def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag,dataset,idate):
 
  #define parameters
  root = '../DATA/ROUTING_VIC_DERIVED'
@@ -1255,12 +1267,25 @@ def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag):
   ctl_in = "../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl"
  else:
   return
- file_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
- ctl_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl'
+ if dataset == 'forecast':
+  ctl_in = "../DATA/GFS_DERIVED/%04d%02d%02d/Streamflow.ctl" % (idate.year,idate.month,idate.day)
+ 
+ if dataset == 'monitor':
+  file_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl'
+ elif dataset == 'forecast':
+  itime = idate
+  file_out = '../DATA/GFS_DERIVED/%04d%02d%02d/routing_vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/GFS_DERIVED/%04d%02d%02d/routing_vic_derived_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
  dt = relativedelta.relativedelta(years=1)
  idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)
  fdate_clim = date - relativedelta.relativedelta(years=date.year - 2008)
  type = "all"
+
+ #Update the control file
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('routing_vic_derived','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
 
  #If the product for today exists then exit
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
@@ -1304,28 +1329,36 @@ def Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag):
  fp.variables['flw_pct'][0] = pct
  #Close file
  fp.close()
-
- #Update the control file
- nt = (date - itime).days + 1
- file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('routing_vic_derived','%y4','%m2','%d2')
- Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
  
  return
 
-def Calculate_and_Output_SM_Percentiles(date,dims):
+def Calculate_and_Output_SM_Percentiles(date,dims,dataset,idate,Reprocess_Flag):
 
  #define parameters
  root = '../DATA/VIC_DERIVED'
- ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
  itime = datetime.datetime(1950,1,1)
+
+ #Define control files
  if date >= itime and date <= datetime.datetime(2008,12,31):
-  ctl_in = "../DATA/VIC/OUTPUT/DAILY/vic_daily_0.25deg.ctl"
+  ctl_in = "../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl"
  elif date > datetime.datetime(2008,12,31):
-  ctl_in = "../DATA/VIC/OUTPUT_3B42RT/DAILY/vic_daily_0.25deg.ctl"
+  ctl_in = "../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl"
  else:
   return
- file_out = '%s/DAILY/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (root,date.year,date.month,date.day,dims['res'])
- ctl_out = '%s/DAILY/vic_derived_daily_0.25deg.ctl' % root
+ if dataset == 'forecast':
+  ctl_in = "../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00.ctl" % (idate.year,idate.month,idate.day,idate.year,idate.month,idate.day)
+
+ #Determine output files
+ if dataset == 'monitor':
+  file_out = '../DATA/VIC_DERIVED/DAILY/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl'
+ elif dataset == 'forecast':
+  itime = idate
+  file_out = '../DATA/GFS_DERIVED/%04d%02d%02d/vic_derived_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,date.year,date.month,date.day,dims['res'])
+  ctl_out = '../DATA/GFS_DERIVED/%04d%02d%02d/vic_derived_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+ dt = relativedelta.relativedelta(years=1)
+
+ #Define other parameters and files
  soil_ctl = "../DATA/VIC/INPUT/soil_Africa_0.25deg_calibrated_final.ctl"
  dt = relativedelta.relativedelta(years=1)
  idate_clim = date - relativedelta.relativedelta(years=date.year - 1950)
@@ -1336,9 +1369,16 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
  dt_down = relativedelta.relativedelta(days=1)
  type = "all"
 
+ #Update the control file
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('vic_derived','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
  #If the product for today exists then exit
- if os.path.exists(file_out) == True:
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
+
+ print_info_to_command_line("Computing soil moisture percentiles")
 
  #Extract necessary soil information
  ga("open %s" % soil_ctl)
@@ -1394,11 +1434,6 @@ def Calculate_and_Output_SM_Percentiles(date,dims):
  fp.variables['vcpct'][0] = vcpct
  #Close file
  fp.close()
-
- #Update the control file
- nt = (date - itime).days + 1
- file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('vic_derived','%y4','%m2','%d2')
- Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
 
  return
 
@@ -2079,7 +2114,8 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 def Run_VIC(idate,fdate,dims,dataset):
 
  dt = relativedelta.relativedelta(years=7)
- VIC_exe = '../SOURCE/VIC_4.0.5_image_mode_openmp/VIC_dev.exe'
+ VIC_exe = '../SOURCE/VIC_4.0.5_image_mode/VIC_dev.exe'
+ #VIC_exe = '../SOURCE/VIC_4.0.5_image_mode_openmp/VIC_dev.exe'
  VIC_global = '../WORKSPACE/Global_Parameter.txt'
 
  #If it is pgf
@@ -2187,34 +2223,159 @@ def Run_VDSC(idate,fdate,dims,dataset):
  ist = 1
  if idate == datetime.datetime(1948,1,1):
   ist = -1
- iyear = idate.year
- imonth = idate.month
- iday = idate.day
- nt = (fdate - idate).days + 1
  if dataset == 'pgf':
+  idate_ctl = datetime.datetime(1948,1,1)
   input_dir = '../DATA/VIC/OUTPUT/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
   state_dir = '../DATA/ROUTING_VIC_PGF/STATE'
+  ctl = '../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl'
  if dataset == '3b42rt':
+  idate_ctl = datetime.datetime(2003,1,1)
   input_dir = '../DATA/VIC/OUTPUT_3B42RT/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_3B42RT/DAILY'
   state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
+  ctl = '../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl'
  if dataset == 'gfsanl':
   input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_GFSANL/DAILY'
   state_dir = '../DATA/ROUTING_VIC_GFSANL/STATE'
+  ctl = '../DATA/ROUTING_VIC_GFSANL/DAILY/Streamflow.ctl'
  if dataset == 'gfs_forecast':
   idate = fdate + datetime.timedelta(days=1)
   fdate = idate + datetime.timedelta(days=6)
-  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
-  output_dir = '../DATA/GFS_DERIVED/%04d%02d%02d/' % (idate.year,idate.month,idate.day)
+  idate_ctl = idate
+  input_dir = '../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_' % (idate.year,idate.month,idate.day)
+  output_dir = '../DATA/GFS_DERIVED/%04d%02d%02d' % (idate.year,idate.month,idate.day)
   state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
+  ctl = '../DATA/GFS_DERIVED/%04d%02d%02d/Streamflow.ctl' % (idate.year,idate.month,idate.day)
 
  #Add current directory info
  input_dir = os.getcwd() + '/' + input_dir
  output_dir = os.getcwd() + '/' + output_dir
  state_dir = os.getcwd() + '/' + state_dir
+
+ #Define time info
+ iyear = idate.year
+ imonth = idate.month
+ iday = idate.day
+ nt = (fdate - idate).days + 1
+
  #Run the model
  os.system('perl ../SOURCE/Grid_Routing/scripts/Run_Grid_Routing.pl %d %d %d %d %d %s %s %s' % (iyear,imonth,iday,nt,ist,input_dir,output_dir,state_dir))
+
+ #Update the control file
+ nt = (fdate - idate_ctl).days + 1
+ fp = open(ctl,'w')
+ fp.write('dset ^Streamflow_%y4%m2%d2.bin\n')
+ fp.write('options template little_endian\n')
+ fp.write('title x,y direction for AFR at 900s resolution \n')
+ fp.write('undef -9.99e+08\n')
+ fp.write('xdef %d  linear %f %f\n' % (dims['nlon'],dims['minlon'],dims['res']))
+ fp.write('ydef %d  linear %f %f\n' % (dims['nlat'],dims['minlat'],dims['res']))
+ fp.write('tdef %d linear 00Z%s 1dy\n' % (nt,idate_ctl.strftime('%d%b%Y')))
+ fp.write('zdef 1 linear 1 1\n')
+ fp.write('vars 1\n')
+ fp.write('flw 0 99 Routed Streamflow [m3/s]\n')
+ fp.write('endvars\n')
+ fp.close()
+
+ return
+
+def Finalize_GFS_forecast(idate,dims):
+
+ print_info_to_command_line("Finalizing the GFS forecast products")
+
+ DATA = {}
+ for t in xrange(0,7):
+  
+  #Define the timestamp
+  date = idate + t*datetime.timedelta(days=1)
+  gradsdate = datetime2gradstime(date)
+  gradsidate = datetime2gradstime(idate)
+
+  #Define all the control files
+  ctl_vic = "../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00.ctl" % (idate.year,idate.month,idate.day,idate.year,idate.month,idate.day)
+  ctl_vic_derived = '../DATA/GFS_DERIVED/%04d%02d%02d/vic_derived_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+  ctl_routing = '../DATA/GFS_DERIVED/%04d%02d%02d/Streamflow.ctl' % (idate.year,idate.month,idate.day)
+  ctl_forcing = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
+  ctl_spi = '../DATA/GFS_DERIVED/%04d%02d%02d/spi_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+  ctl_routing_derived = '../DATA/GFS_DERIVED/%04d%02d%02d/routing_vic_derived_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+ 
+  #Create dictionary of ctl info
+  ctl_info = {ctl_vic:'open',ctl_vic_derived:'xdfopen',ctl_routing:'open',ctl_forcing:'xdfopen',ctl_spi:'xdfopen',ctl_routing_derived:'xdfopen'}
+
+  #Iterate through all data files extracting the desired data
+  for ctl in ctl_info:
+
+   #Open all the control files
+   ga("%s %s" % (ctl_info[ctl],ctl))
+   
+   #Set timestamp
+   ga("set time %s" % gradsdate)
+   if ctl == ctl_forcing:
+    ga("set time %s" % gradsidate)
+
+   #Extract all the variable names
+   vars = ga.query("file").vars
+   vars_info = ga.query("file").var_info
+
+   #Extract all the info for the variable at that time step
+   count = 0
+   for var in vars:
+    if t == 0:
+     DATA[var] = {}
+     DATA[var]['data'] = []
+     DATA[var]['info'] = vars_info[count][3]
+    DATA[var]['data'].append(ga.exp(var))
+    count = count + 1
+
+   #Close all the control files
+   ga("close 1")
+
+ #Write all the data to a file
+ file_out = "../DATA/GFS_DERIVED/%04d%02d%02d/gfs_derived_%04d%02d%02d00.nc" % (idate.year,idate.month,idate.day,idate.year,idate.month,idate.day)
+ vars = []
+ vars_info = []
+ for var in DATA:
+  vars.append(var)
+  vars_info.append(DATA[var]['info'])
+ nt = 7
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file_out,vars,vars_info,idate,tstep,nt)
+
+ #Write to file
+ for t in xrange(0,7):
+  for var in vars:
+   fp.variables[var][t] = DATA[var]['data'][t]
+
+ #Close access to file
+ fp.close()
+
+ #Update the control file
+ idate_all = datetime.datetime(2013,1,1)
+ fdate_all = idate
+ ndays = (fdate_all - idate_all).days + 1
+ ctl = '../DATA/GFS_DERIVED/GFS_DERIVED.ctl'
+ fp = open(ctl,'w')
+ fp.write('dset ^%e/gfs_derived_%e00.nc\n')
+ fp.write('options template\n')
+ fp.write('dtype netcdf\n')
+ fp.write('title GFS Forecast\n')
+ fp.write('undef -9.99e+08\n')
+ fp.write('xdef %d  linear %f %f\n' % (dims['nlon'],dims['minlon'],dims['res']))
+ fp.write('ydef %d  linear %f %f\n' % (dims['nlat'],dims['minlat'],dims['res']))
+ fp.write('tdef %d linear 00Z%s 1dy\n' % (ndays+7-1,idate_all.strftime('%d%b%Y')))
+ fp.write('zdef 1 linear 1 1\n')
+ fp.write('edef %d\n' % ndays)
+ date_tmp = idate_all
+ while date_tmp <= fdate_all:
+  fp.write('%04d%02d%02d 7 00Z%s 1dy\n' % (date_tmp.year,date_tmp.month,date_tmp.day,date_tmp.strftime('%d%b%Y')))
+  date_tmp = date_tmp + relativedelta.relativedelta(days=1)
+ fp.write('endedef\n')
+ fp.write('vars %d\n' % len(vars))
+ for ivar in xrange(0,len(vars)):
+  fp.write('%s 1 t,y,x %s\n' % (vars[ivar],vars_info[ivar]))
+ fp.write('endvars\n')
+ fp.close()
 
  return
