@@ -1473,11 +1473,11 @@ def Calculate_and_Output_NDVI_Percentiles(date,dims):
  print "Extracing modis data (Climatology)"
  dt_up = relativedelta.relativedelta(days=5)
  dt_down = relativedelta.relativedelta(days=5)
- data_modis_clim = Extract_Data_Period_Average(idate_modis,fdate_modis,dt_down,dt_up,dt,ctl_modis,var,type)
+ data_modis_clim = Extract_Data_Period_Average(idate_modis,fdate_modis,dt_down,dt_up,dt,ctl_modis,var,type,'xdfopen')
  print "Extracing modis data (To calculate percentile)"
  dt_up = relativedelta.relativedelta(days=0)
  dt_down = relativedelta.relativedelta(days=0)
- data_modis = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_modis,var,type)
+ data_modis = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_modis,var,type,'xdfopen')
 
  #Calculate the percentiles
  print "Calculating the percentiles"
@@ -2224,18 +2224,18 @@ def Run_VDSC(idate,fdate,dims,dataset):
   ist = -1
  if dataset == 'pgf':
   idate_ctl = datetime.datetime(1948,1,1)
-  input_dir = '../DATA/VIC/OUTPUT/DAILY/output_grid_'
+  input_dir = '../DATA/VIC_PGF/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
   state_dir = '../DATA/ROUTING_VIC_PGF/STATE'
   ctl = '../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl'
  if dataset == '3b42rt':
   idate_ctl = datetime.datetime(2003,1,1)
-  input_dir = '../DATA/VIC/OUTPUT_3B42RT/DAILY/output_grid_'
+  input_dir = '../DATA/VIC_3B42RT/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_3B42RT/DAILY'
   state_dir = '../DATA/ROUTING_VIC_3B42RT/STATE'
   ctl = '../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl'
  if dataset == 'gfsanl':
-  input_dir = '../DATA/VIC/OUTPUT_GFSANL/DAILY/output_grid_'
+  input_dir = '../DATA/VIC_GFSANL/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_GFSANL/DAILY'
   state_dir = '../DATA/ROUTING_VIC_GFSANL/STATE'
   ctl = '../DATA/ROUTING_VIC_GFSANL/DAILY/Streamflow.ctl'
@@ -2321,12 +2321,14 @@ def Finalize_GFS_forecast(idate,dims):
    #Extract all the info for the variable at that time step
    count = 0
    for var in vars:
+    if var == 'prec' and ctl == ctl_vic:
+     continue
     if t == 0:
      DATA[var] = {}
      DATA[var]['data'] = []
      DATA[var]['info'] = vars_info[count][3]
-    DATA[var]['data'].append(ga.exp(var))
     count = count + 1
+    DATA[var]['data'].append(ga.exp(var))
 
    #Close all the control files
    ga("close 1")

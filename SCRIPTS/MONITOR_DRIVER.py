@@ -60,13 +60,13 @@ def BiasCorrect(date):
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
 
  #Bias correct the gfs forecast
- ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,True)
  
  #Compute different moving averages of the ndvi product
  ml.Compute_NDVI_moving_average(date,dims,False)
 
  #Bias correct the gfs analysis product
- ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,True)
+ ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
 
  return
 
@@ -98,7 +98,7 @@ def Compute_Forecast_Indices(date,idate):
 
  ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,True)
  
- ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
+ #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
 
  return
 
@@ -135,7 +135,7 @@ dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 date = datetime.datetime.today()
 idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,9,1)
+idate = datetime.datetime(2013,9,11)
 fdate = datetime.datetime(2013,9,12)
 dates = []
 #while date <= fdate:
@@ -145,19 +145,19 @@ dates = []
 #Download and bias correct data
 date = idate
 while date <= fdate:
- Download_and_Process(date)
+ #Download_and_Process(date)
  BiasCorrect(date)
  date = date + dt
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims,'3b42rt')
+#ml.Run_VIC(idate,fdate,dims,'3b42rt')
 #ml.Run_VIC(idate,fdate,dims,'pgf')
-ml.Run_VIC(idate,fdate,dims,'gfs_forecast')
+#ml.Run_VIC(idate,fdate,dims,'gfs_forecast')
 
 #Run the Routing model
 #ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'pgf')
-ml.Run_VDSC(idate,fdate,dims,'3b42rt')
-ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
+#ml.Run_VDSC(idate,fdate,dims,'3b42rt')
+#ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
 
 #Compute Monitor Indices
 date = idate
