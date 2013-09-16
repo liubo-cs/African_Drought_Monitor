@@ -655,7 +655,18 @@ def Compute_NDVI_moving_average(date,dims,Reprocess_Flag):
  file = '%s/%s' % (modis_root,netcdf_file)
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2003,1,1):
+ itime = datetime.datetime(2003,1,1)
+ if date < itime:
+  return
+
+ #Update the control file
+ ctl_out = '../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('MOD09CMG','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
   return
 
  #If file exists exit
@@ -885,8 +896,6 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
  vars_info = ['daily total precip (mm)','daily maximum temperature (K)','daily minimum temperature (K)','daily mean wind speed (m/s)']
  idate = date
  for t in range(7):
- 
-  print date
  
   #Set info for current day
   idate_pgf = date - relativedelta.relativedelta(years=date.year - 2001)#datetime.datetime(1950,date.month,date.day)
@@ -1446,16 +1455,23 @@ def Update_Control_File(type,idate,dims,nt,tstep,file_template,ctl_file):
   fp.write('tdef t %d linear %s %s\n' % (nt,datetime2gradstime(idate),tstep))
   fp.close()
 
-def Calculate_and_Output_NDVI_Percentiles(date,dims):
+def Calculate_and_Output_NDVI_Percentiles(date,dims,Reprocess_Flag):
 
  #define parameters
  file_out = '../DATA/MOD09_NDVI_MA/DAILY_PCT/MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
- #If the file exists then exit (unless we are reprocessing the data)
- if os.path.exists(file_out) == True:
+ itime = datetime.datetime(2003,1,1)
+ if date < itime:
   return
 
- if date < datetime.datetime(2003,1,1):
+ #Update the control file
+ ctl_out = '../DATA/MOD09_NDVI_MA/DAILY_PCT/MOD09CMG_daily_0.25deg.ctl' 
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('MOD09CMG','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
 
  print_info_to_command_line("Computing the NDVI percentiles")
@@ -1808,7 +1824,6 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
  ga("set t last")
  ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
  ga("close 1")
- print itime,ftime
  
  #If we are before or after the datasets last time step, exit
  if date < itime or date > ftime:
@@ -1991,11 +2006,10 @@ def Prepare_VIC_Forcings_GFS_forecast(idate,fdate,dims):
  iday = 0
  while date <= fdate:
 
-  print date,itime,iday
+  print date
   #Open the control file
   iday = iday + 1
   ctl_file = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % iday
-  print ctl_file
   ga('xdfopen %s' % ctl_file)
 
   #Set time
@@ -2119,17 +2133,25 @@ def Run_VIC(idate,fdate,dims,dataset):
 
  #If it is pgf
  if dataset == 'pgf':
+  idate_all = datetime.datetime(1948,1,1)
   if fdate > datetime.datetime(2008,12,31):
    fdate = datetime.datetime(2008,12,31)
   if idate < datetime.datetime(1948,1,1):
    idate = datetime.datetime(1948,1,1)
   if (fdate - idate).days <= 0:
    return
+  file = '../DATA/VIC_PGF/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
+  if os.path.exists(file):
+   return
  #If it is 3b42rt
  if dataset == '3b42rt':
+  idate_all = datetime.datetime(2003,1,1)
   if idate < datetime.datetime(2003,1,1):
    idate = datetime.datetime(2003,1,1)
   if (fdate-idate).days <= 0:
+   return
+  file = '../DATA/VIC_3B42RT/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
+  if os.path.exists(file):
    return
  #If it is gfsanl
  if dataset == 'gfsanl':
@@ -2141,6 +2163,9 @@ def Run_VIC(idate,fdate,dims,dataset):
   idate = fdate + datetime.timedelta(days=1)
   fdate = fdate + datetime.timedelta(days=7)
   if idate < datetime.datetime(2013,8,1):
+   return
+  file = '../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00\n' % (idate.year,idate.month,idate.day,fdate.year,fdate.month,fdate.day)
+  if os.path.exists(file):
    return
 
  #Run model until completed 
@@ -2169,13 +2194,52 @@ def Run_VIC(idate,fdate,dims,dataset):
 
   #Run the model
   print "Running VIC"
-  os.system('%s -g %s' % (VIC_exe,VIC_global))
+  #os.system('%s -g %s' % (VIC_exe,VIC_global))
 
   #Remove the forcing file
   os.system('rm %s' % forcing_file)
 
   #Update initial time step
   idate_tmp = fdate_tmp + datetime.timedelta(days=1)
+
+ #Update the control file
+ if dataset not in ['pgf','3b42rt']:
+  return
+ if dataset == 'pgf':
+  ctl = '../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl'
+ if dataset == '3b42rt':
+  ctl = '../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl'
+ nt = (fdate - idate_all).days + 1
+ fp = open(ctl,'w')
+ fp.write('dset ^output_grid_%y4%m2%d2%h2\n')
+ fp.write('options template\n')
+ fp.write('title Gridded VIC Output\n')
+ fp.write('undef -999.900000\n')
+ fp.write('xdef 296 linear -18.875000 0.250000\n')
+ fp.write('ydef 292 linear -34.875000 0.250000\n')
+ fp.write('zdef 1 linear 1 1\n')
+ fp.write('tdef %d linear %s 24hr\n' % (nt,idate_all.strftime('%d%b%Y')))
+ fp.write('vars 18\n')
+ fp.write('prec            0  61 prec (mm)\n')
+ fp.write('evap            0  57 evap (mm)\n')
+ fp.write('runoff          0 235 runoff (mm)\n')
+ fp.write('baseflow        0 234 baseflow (mm)\n')
+ fp.write('Wdew            0  99 Wdew (mm)\n')
+ fp.write('sm1             0 151 soil moisture in layer 1 (mm)\n')
+ fp.write('sm2             0 151 soil moisture in layer 2 (mm)\n')
+ fp.write('sm3             0 151 soil moisture in layer 3 (mm)\n')
+ fp.write('evap_canop      0 200 evap_canop (mm)\n')
+ fp.write('evap_veg        0 210 evap_veg (mm)\n')
+ fp.write('evap_bare       0 199 evap_bare (mm)\n')
+ fp.write('net_short       0 111 net_short (W/m^2)\n')
+ fp.write('net_long       0 111 net_long (W/m^2)\n')
+ fp.write('r_net           0  99 r_net (W/m^2)\n')
+ fp.write('surf_temp           0  99 surf_temp (C)\n')
+ fp.write('swq             0  65 swq (mm)\n')
+ fp.write('snow_depth      0  66 snow_depth (cm)\n')
+ fp.write('snow_canop      0  99 snow_canop (mm)\n')
+ fp.write('endvars\n')
+ fp.close()
 
  return
 
