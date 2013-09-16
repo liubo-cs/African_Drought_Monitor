@@ -641,8 +641,7 @@ def getBit_array(x, p):
  
  #Determine the value of the pth bit position (0,1) 
  #array cell_clim)
- print "REVISIT!!!!"
- exit()
+ array = np.zeros(x.shape,dtype=int)
  array[:] = 2**p
  array = np.bitwise_and(x,array)
  array[array!=0] = 1
