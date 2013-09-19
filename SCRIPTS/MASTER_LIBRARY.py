@@ -256,18 +256,18 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
  ga("set lon -179.5 179.5")
 
  #Define the output variables
- ga("tmax = max(tmp2m,t=1,t=4)")
- ga("tmin = min(tmp2m,t=1,t=4)")
- ga("wind = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
+ ga("tmax0 = max(tmp2m,t=1,t=4)")
+ ga("tmin0 = min(tmp2m,t=1,t=4)")
+ ga("wind0 = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
 
  #Set to new region
  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
 
  #Regrid to 1/4 degree
- Grads_Regrid("tmax","tmax",dims)
- Grads_Regrid("tmin","tmin",dims)
- Grads_Regrid("wind","wind",dims)
+ Grads_Regrid("tmax0","tmax0",dims)
+ Grads_Regrid("tmin0","tmin0",dims)
+ Grads_Regrid("wind0","wind0",dims)
 
  #Create and open access to netcdf file
  vars = ['tmax','tmin','wind']
@@ -278,7 +278,7 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
 
  #Write to file
  for var in vars:
-  data = np.ma.getdata(ga.exp(var))
+  data = np.ma.getdata(ga.exp(var+'0'))
   fp.variables[var][0] = data
 
  #Close access to all files in grads
@@ -351,14 +351,14 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
 
  #Define the output variables
  ga("tmp = 1.5*p(t=1) + 1.5*p(t=9) + 3*sum(p,t=2,t=8)") #mm/day
- ga("prec = const(maskout(tmp,tmp),-9.99e+08,-u)")
+ ga("prec0 = const(maskout(tmp,tmp),-9.99e+08,-u)")
 
  #Set to new region
  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
 
  #Regrid to 1/4 degree
- Grads_Regrid("prec","prec",dims)
+ Grads_Regrid("prec0","prec0",dims)
 
  #Create and open access to netcdf file
  vars = ['prec']
@@ -369,7 +369,7 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
 
  #Write to file
  for var in vars:
-  data = np.ma.getdata(ga.exp(var))
+  data = np.ma.getdata(ga.exp(var+'0'))
   fp.variables[var][0] = data
 
  #Close access to all files in grads
@@ -512,9 +512,13 @@ def Download_and_Process_NDVI(date,dims,Reprocess_Flag):
  filename = '../WORKSPACE/MOD09CMG.005_%04d.%02d.%02d.hdf' % (date.year,date.month,date.day)
 
  #Check to see if file exists
+ '''
  if os.path.exists(filename) == False:
-  print "File does not exist, exiting"
+  print "File does not exist, placing an empty holder"
+  old_file = '../DATA/MOD09_NDVI/DAILY/MOD09CMG_20030201_daily_0.250deg.nc'
+  os.system("cp %s %s" % (old_file,netcdf_file))
   return
+ '''
 
  #Open the hdf file
  hdf = sd.SD(filename)
@@ -1458,14 +1462,14 @@ def Update_Control_File(type,idate,dims,nt,tstep,file_template,ctl_file):
 def Calculate_and_Output_NDVI_Percentiles(date,dims,Reprocess_Flag):
 
  #define parameters
- file_out = '../DATA/MOD09_NDVI_MA/DAILY_PCT/MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ file_out = '../DATA/MOD09_NDVI_MA_DERIVED/DAILY/MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  itime = datetime.datetime(2003,1,1)
  if date < itime:
   return
 
  #Update the control file
- ctl_out = '../DATA/MOD09_NDVI_MA/DAILY_PCT/MOD09CMG_daily_0.25deg.ctl' 
+ ctl_out = '../DATA/MOD09_NDVI_MA_DERIVED/DAILY/MOD09CMG_daily_0.25deg.ctl' 
  nt = (date - itime).days + 1
  file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('MOD09CMG','%y4','%m2','%d2')
  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
@@ -1646,7 +1650,7 @@ def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag)
  fp.close()
 
  #Run program
- #os.system('./NMME-SPI.sh >& log.txt')
+ os.system('./NMME-SPI.sh >& ../WORKSPACE/NMME-SPI_log.txt')
 
  #Change back to original directory
  os.chdir(owd)
@@ -1719,7 +1723,7 @@ def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag)
   fp.write('undef -9.99e+08\n')
   fp.write('xdef %d  linear %f %f\n' % (dims['nlon'],dims['minlon'],dims['res']))
   fp.write('ydef %d  linear %f %f\n' % (dims['nlat'],dims['minlat'],dims['res']))
-  fp.write('tdef %d linear 00Z01%s%d 1mo\n' % (nmonths+6,idate.strftime('%b'),idate.year))
+  fp.write('tdef %d linear 00Z01%s%d 1mo\n' % (nmonths+5,idate.strftime('%b'),idate.year))
   fp.write('zdef 1 linear 1 1\n')
   fp.write('edef %d\n' % nmonths)
   date_tmp = idate
@@ -1811,7 +1815,7 @@ def Reprocess_PGF(date,dims):
 
  return
 
-def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reprocess_flag):
+def Collect_Dataset_Bounds(dataset,ctl_in,info,open_type):
 
  #Determine dataset bounds
  ga("%s %s" % (open_type,ctl_in))
@@ -1824,6 +1828,31 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
  ga("set t last")
  ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
  ga("close 1")
+
+ #Place info
+ info['itime'] = itime
+ info['ftime'] = ftime
+
+ return info
+
+def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reprocess_flag,itime,ftime):
+
+ #Check for new month or new year
+ ndate = date + dt
+ if date.month == ndate.month:
+  return
+
+ #Determine dataset bounds
+ #ga("%s %s" % (open_type,ctl_in))
+ #qh = ga.query("file")
+ #vars = qh.vars
+
+ #Iterate through the variables
+ #ga("set t 1")
+ #itime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
+ #ga("set t last")
+ #ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
+ #ga("close 1")
  
  #If we are before or after the datasets last time step, exit
  if date < itime or date > ftime:
@@ -1849,11 +1878,11 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
   #Compute Monthly Average
   Compute_Time_Averages(ctl_in,file_out,idate,fdate,dims,open_type)
   
-  #Update the control file
-  ctl_out = '../DATA/%s/MONTHLY/%s_monthly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
-  nt = 12*(date.year - itime.year) + max(date.month - itime.month,0) + 1
-  file_template = '^%s_%s%s_monthly_%.3fdeg.nc' % (dataset,'%y4','%m2',dims['res'])
-  Update_Control_File('nc',itime,dims,nt,'1mo',file_template,ctl_out)
+ #Update the control file
+ ctl_out = '../DATA/%s/MONTHLY/%s_monthly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+ nt = 12*(date.year - itime.year) + max(date.month - itime.month,0) + 1
+ file_template = '^%s_%s%s_monthly_%.3fdeg.nc' % (dataset,'%y4','%m2',dims['res'])
+ Update_Control_File('nc',itime,dims,nt,'1mo',file_template,ctl_out)
 
  #Check for new year
  if date.year == ndate.year:
@@ -1873,11 +1902,11 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
   #Compute Annual Average
   Compute_Time_Averages(ctl_in,file_out,idate,fdate,dims,open_type)
 
-  #Update the control file
-  ctl_out = '../DATA/%s/YEARLY/%s_yearly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
-  nt = max(date.year - itime.year,0) + 1
-  file_template = '^%s_%s_yearly_%.3fdeg.nc' % (dataset,'%y4',dims['res'])
-  Update_Control_File('nc',itime,dims,nt,'1yr',file_template,ctl_out)
+ #Update the control file
+ ctl_out = '../DATA/%s/YEARLY/%s_yearly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+ nt = max(date.year - itime.year,0) + 1
+ file_template = '^%s_%s_yearly_%.3fdeg.nc' % (dataset,'%y4',dims['res'])
+ Update_Control_File('nc',itime,dims,nt,'1yr',file_template,ctl_out)
 
  return
 
@@ -2124,7 +2153,7 @@ def Prepare_VIC_Forcings_Historical(idate,fdate,dims):
 
  return forcing_file
 
-def Run_VIC(idate,fdate,dims,dataset):
+def Run_VIC(idate,fdate,dims,dataset,Reprocess_Flag):
 
  dt = relativedelta.relativedelta(years=7)
  VIC_exe = '../SOURCE/VIC_4.0.5_image_mode/VIC_dev.exe'
@@ -2141,7 +2170,7 @@ def Run_VIC(idate,fdate,dims,dataset):
   if (fdate - idate).days <= 0:
    return
   file = '../DATA/VIC_PGF/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
-  if os.path.exists(file):
+  if os.path.exists(file) and Reprocess_Flag == False:
    return
  #If it is 3b42rt
  if dataset == '3b42rt':
@@ -2151,7 +2180,7 @@ def Run_VIC(idate,fdate,dims,dataset):
   if (fdate-idate).days <= 0:
    return
   file = '../DATA/VIC_3B42RT/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
-  if os.path.exists(file):
+  if os.path.exists(file) and Reprocess_Flag == False:
    return
  #If it is gfsanl
  if dataset == 'gfsanl':
@@ -2164,8 +2193,8 @@ def Run_VIC(idate,fdate,dims,dataset):
   fdate = fdate + datetime.timedelta(days=7)
   if idate < datetime.datetime(2013,8,1):
    return
-  file = '../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00\n' % (idate.year,idate.month,idate.day,fdate.year,fdate.month,fdate.day)
-  if os.path.exists(file):
+  file = '../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00' % (idate.year,idate.month,idate.day,fdate.year,fdate.month,fdate.day)
+  if os.path.exists(file) and Reprocess_Flag == False:
    return
 
  #Run model until completed 
@@ -2194,7 +2223,7 @@ def Run_VIC(idate,fdate,dims,dataset):
 
   #Run the model
   print "Running VIC"
-  #os.system('%s -g %s' % (VIC_exe,VIC_global))
+  os.system('%s -g %s >& ../WORKSPACE/VIC_log.txt' % (VIC_exe,VIC_global))
 
   #Remove the forcing file
   os.system('rm %s' % forcing_file)
@@ -2288,6 +2317,9 @@ def Run_VDSC(idate,fdate,dims,dataset):
   ist = -1
  if dataset == 'pgf':
   idate_ctl = datetime.datetime(1948,1,1)
+  fdate_ctl = datetime.datetime(2008,12,31)
+  if (idate < idate_ctl or fdate > fdate_ctl):
+   return
   input_dir = '../DATA/VIC_PGF/DAILY/output_grid_'
   output_dir = '../DATA/ROUTING_VIC_PGF/DAILY'
   state_dir = '../DATA/ROUTING_VIC_PGF/STATE'

@@ -15,6 +15,21 @@ import os
 import dateutil.relativedelta as relativedelta
 import time
 
+dataset_info = {
+        'PGF':{'ctl':"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl",'type':'xdfopen'},
+        '3B42RT_BC':{'ctl':"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl",'type':"xdfopen"},
+        'GFS_ANL_BC':{'ctl':"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl",'type':"xdfopen"},
+        'VIC_PGF':{'ctl':"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl",'type':"open"},
+        'VIC_3B42RT':{'ctl':"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl",'type':"open"},
+        'ROUTING_VIC_PGF':{'ctl':"../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl",'type':"open"},
+        'ROUTING_VIC_3B42RT':{'ctl':"../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl",'type':"open"},
+        'MOD09_NDVI_MA':{'ctl':"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl",'type':"xdfopen"},
+        'MOD09_NDVI_MA_DERIVED':{'ctl':"../DATA/MOD09_NDVI_MA_DERIVED/DAILY/MOD09CMG_daily_0.25deg.ctl",'type':"xdfopen"},
+        'VIC_DERIVED':{'ctl':"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
+        'ROUTING_VIC_DERIVED':{'ctl':"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
+        'SPI':{'ctl':"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl",'type':"xdfopen"},
+        }
+
 def Download_and_Process(date):
 
  #################################################
@@ -80,39 +95,60 @@ def Compute_Indices(date):
  #COMPUTE INDICES
  #################################################
 
+ Reprocess_Flag = False
+
  ml.print_info_to_command_line("Computing indices for %d/%d/%d" % (date.day,date.month,date.year))
 
- ml.Calculate_and_Output_SPI(date,dims,'monitor',date,False)
+ ml.Calculate_and_Output_SPI(date,dims,'monitor',date,Reprocess_Flag)
 
- ml.Calculate_and_Output_NDVI_Percentiles(date,dims,False)
+ ml.Calculate_and_Output_NDVI_Percentiles(date,dims,Reprocess_Flag)
 
- ml.Calculate_and_Output_SM_Percentiles(date,dims,'monitor',date,False)
+ ml.Calculate_and_Output_SM_Percentiles(date,dims,'monitor',date,Reprocess_Flag)
 
- ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False,'monitor',date)
+ ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag,'monitor',date)
 
  return
 
 def Compute_Forecast_Indices(date,idate):
 
+ Reprocess_Flag = False
+
  ml.print_info_to_command_line("Computing forecast indices for %d/%d/%d" % (date.day,date.month,date.year))
 
- ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,False,'forecast',idate)
+ ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag,'forecast',idate)
 
- ml.Calculate_and_Output_SM_Percentiles(date,dims,'forecast',idate,False)
+ ml.Calculate_and_Output_SM_Percentiles(date,dims,'forecast',idate,Reprocess_Flag)
 
- ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,False)
+ ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,Reprocess_Flag)
  
- #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
+ ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
 
  return
 
-def Compute_Averages(date):
+def Compute_Averages(date,idate):
+
+ #################################################
+ #COLLECT DATASET BOUNDS
+ #################################################
+
+ if date == idate:
+  for dataset in dataset_info:
+   type = dataset_info[dataset]['type']
+   ctl = dataset_info[dataset]['ctl']
+   dataset_info[dataset] = ml.Collect_Dataset_Bounds(dataset,ctl,dataset_info[dataset],type)
 
  #################################################
  #COMPUTE MONTHLY AND ANNUAL PRODUCTS
  #################################################
 
  Averages_Reprocess_Flag = False#True
+ for dataset in dataset_info:
+  type = dataset_info[dataset]['type']
+  ctl = dataset_info[dataset]['ctl']
+  itime = dataset_info[dataset]['itime']
+  ftime = dataset_info[dataset]['ftime']
+  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl,type,Averages_Reprocess_Flag,itime,ftime)
+ '''
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
@@ -124,6 +160,7 @@ def Compute_Averages(date):
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ '''
 
  return
 
@@ -136,14 +173,14 @@ dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
-date = datetime.datetime.today()
-idate = datetime.datetime(date.year,date.month,date.day) - 6*dt
-idate = datetime.datetime(2013,9,1)
-fdate = datetime.datetime(2013,9,12)
-dates = []
-#while date <= fdate:
-# dates.append(date)
-# date = date + dt
+fdate = datetime.datetime.today() - 4*dt
+idate = datetime.datetime(fdate.year,fdate.month,1)
+fdate = datetime.datetime(fdate.year,fdate.month,fdate.day)
+print idate
+print fdate
+#exit()
+#idate = datetime.datetime(1950,1,1)
+#fdate = datetime.datetime(2013,9,12)
 
 #Download and bias correct data
 date = idate
@@ -153,9 +190,9 @@ while date <= fdate:
  date = date + dt
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims,'3b42rt')
+ml.Run_VIC(idate,fdate,dims,'3b42rt',False)
 #ml.Run_VIC(idate,fdate,dims,'pgf')
-ml.Run_VIC(idate,fdate,dims,'gfs_forecast')
+ml.Run_VIC(idate,fdate,dims,'gfs_forecast',False)
 
 #Run the Routing model
 #ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'pgf')
@@ -178,7 +215,8 @@ while date <= fdate + 7*dt:
 #Compute Averages
 date = idate
 while date <= fdate:
- Compute_Averages(date)
+ print date
+ Compute_Averages(date,idate)
  date = date + dt
 
 #Finalize GFS forecast
