@@ -27,7 +27,7 @@ dataset_info = {
         'MOD09_NDVI_MA_DERIVED':{'ctl':"../DATA/MOD09_NDVI_MA_DERIVED/DAILY/MOD09CMG_daily_0.25deg.ctl",'type':"xdfopen"},
         'VIC_DERIVED':{'ctl':"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
         'ROUTING_VIC_DERIVED':{'ctl':"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
-        'SPI':{'ctl':"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl",'type':"xdfopen"},
+        'SPI':{'ctl':"../DATA/SPI/DAILY/spi_daily_0.25deg.ctl",'type':"xdfopen"},
         }
 
 def Download_and_Process(date):
@@ -159,7 +159,7 @@ def Compute_Averages(date,idate):
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'MOD09_NDVI_MA',"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/SPI_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
+ ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/spi_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
  '''
 
  return
@@ -173,14 +173,15 @@ dims['res'] = 0.250
 dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
-fdate = datetime.datetime.today() - 4*dt
+fdate = datetime.datetime.today() - 3*dt
 idate = datetime.datetime(fdate.year,fdate.month,1)
 fdate = datetime.datetime(fdate.year,fdate.month,fdate.day)
+#idate = fdate
 print idate
 print fdate
 #exit()
-#idate = datetime.datetime(1950,1,1)
-#fdate = datetime.datetime(2013,9,12)
+#idate = datetime.datetime(2008,12,31)
+#fdate = datetime.datetime(2008,12,31)
 
 #Download and bias correct data
 date = idate

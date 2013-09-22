@@ -434,7 +434,7 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
   
   file = dir + '/gfs_%04d%02d%02d_daily_%.3fdeg_day%d.nc' % (idate.year,idate.month,idate.day,dims['res'],t+1)
   #Determine if we skip the time step
-  if os.path.exists(file) == True:
+  if os.path.exists(file) == True and Reprocess_Flag == False:
    continue
  
   #Set region
@@ -442,26 +442,26 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
   ga("set lon -179.5 179.5")
 
   #Define the output variables
-  ga("tmax = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
-  ga("tmin = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
+  ga("tmax0 = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
+  ga("tmin0 = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
   #ga("prec = 3600*24*ave(oprate,t=%d,t=%d)" % (t1,t2))
-  ga("prec = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
-  ga("wind = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
+  ga("prec0 = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
+  ga("wind0 = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
 
   #Set to new region
   ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
   ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
 
   #Regrid to 1/4 degree
-  Grads_Regrid("tmax","tmax",dims)
-  Grads_Regrid("tmin","tmin",dims)
-  Grads_Regrid("prec","prec",dims)
-  Grads_Regrid("wind","wind",dims)
+  Grads_Regrid("tmax0","tmax0",dims)
+  Grads_Regrid("tmin0","tmin0",dims)
+  Grads_Regrid("prec0","prec0",dims)
+  Grads_Regrid("wind0","wind0",dims)
 
   #Write to file
   fp = Create_NETCDF_File(dims,file,vars,vars_info,idate,'days',1)
   for var in vars:
-   data = np.ma.getdata(ga.exp(var)) 
+   data = np.ma.getdata(ga.exp(var+"0")) 
    fp.variables[var][0] = data
   fp.close()
 
@@ -879,6 +879,9 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
 
  date = date + datetime.timedelta(days=1)
  dir = '../DATA/GFS_BC/%04d%02d%02d' % (date.year,date.month,date.day)
+ 
+ #Reinitialize grads
+ ga('reinit')
 
  #If the date is before the product's start date:
  if date < datetime.datetime(2012,8,14):
