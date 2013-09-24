@@ -1840,9 +1840,25 @@ def Collect_Dataset_Bounds(dataset,ctl_in,info,open_type):
 
 def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reprocess_flag,itime,ftime):
 
+ #Update the control files (MONTHLY)
+ ctl_out = '../DATA/%s/MONTHLY/%s_monthly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+ nt = 12*(ftime.year - itime.year) + max(ftime.month - itime.month,0)# + 1
+ file_template = '^%s_%s%s_monthly_%.3fdeg.nc' % (dataset,'%y4','%m2',dims['res'])
+ Update_Control_File('nc',itime,dims,nt,'1mo',file_template,ctl_out)
+
+ #Update the control files (YEARLY)
+ ctl_out = '../DATA/%s/YEARLY/%s_yearly_%.3fdeg.ctl' % (dataset,dataset,dims['res'])
+ nt = max(ftime.year - itime.year,0)# + 1
+ file_template = '^%s_%s_yearly_%.3fdeg.nc' % (dataset,'%y4',dims['res'])
+ Update_Control_File('nc',itime,dims,nt,'1yr',file_template,ctl_out)
+
  #Check for new month or new year
  ndate = date + dt
  if date.month == ndate.month:
+  return
+
+ #If we are before or after the datasets last time step, exit
+ if date < itime or date > ftime:
   return
 
  #Determine dataset bounds
@@ -1857,9 +1873,6 @@ def Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl_in,open_type,reproc
  #ftime = gradstime2datetime(ga.exp(vars[0]).grid.time[0])
  #ga("close 1")
  
- #If we are before or after the datasets last time step, exit
- if date < itime or date > ftime:
-  return
  yearly_dir = "../DATA/%s/YEARLY" % dataset
  monthly_dir = "../DATA/%s/MONTHLY" % dataset
 

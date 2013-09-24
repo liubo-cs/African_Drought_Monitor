@@ -180,9 +180,8 @@ fdate = datetime.datetime(fdate.year,fdate.month,fdate.day)
 print idate
 print fdate
 #exit()
-#idate = datetime.datetime(2008,12,31)
-#fdate = datetime.datetime(2008,12,31)
-
+#idate = datetime.datetime(2003,1,31)
+#fdate = datetime.datetime(2003,12,31)
 #Download and bias correct data
 date = idate
 while date <= fdate:
