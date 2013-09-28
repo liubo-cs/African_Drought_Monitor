@@ -1648,6 +1648,16 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
  '''
 
  #Regrid and extract only months 2-7 for each ensemble member
+ dims_globe = {}
+ dims_globe['minlat'] = -90.0 #-89.8750
+ dims_globe['minlon'] = 0.0 #0.1250
+ dims_globe['nlat'] = 181 #720
+ dims_globe['nlon'] = 360 #1440
+ dims_globe['res'] = 1.0
+ dims_globe['maxlat'] = dims_globe['minlat'] + dims_globe['res']*(dims_globe['nlat']-1)
+ dims_globe['maxlon'] = dims_globe['minlon'] + dims_globe['res']*(dims_globe['nlon']-1)
+ nt = 6
+ tstep = 'months'
  models = ('CFSv2',)
  vars = {'PRATE':'prec','TMP':'tref'}
  for var in vars:
@@ -1655,16 +1665,34 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
   dir_new = dir0 + '/' + vars[var]
   for model in models:
    for ens in xrange(1,24+1):
+    print model,var,ens
     file_out_org = '{0}/{1}_{2}.nc'.format(dir_old,model,ens)
     file_out_new = '{0}/{1}_{2}.nc'.format(dir_new,model,ens)
+    variables = [vars[var],]
+    vars_info = [vars[var],]
+    #Create file
+    fp = Create_NETCDF_File(dims_globe,file_out_new,variables,vars_info,date,tstep,nt)
+
     #Open file in grads
     ga("sdfopen %s" % file_out_org)
+    #Set to new region
+    ga("set lat %f %f" % (dims_globe['minlat'],dims_globe['maxlat']))
+    ga("set lon %f %f" % (dims_globe['minlon'],dims_globe['maxlon']))
     #Regrid and export to new file
-    #for t in xrange(2,7+1):
-    # ga("set t %d" % t)
+    for t in xrange(2,7+1):
+     ga("set t %d" % t)
+     if var == 'PRATE':
+      ga("data = 24*3600*PRATE")
+      Grads_Regrid("data","prec",dims_globe)
+     elif var == 'TMP':
+      ga("data = TMP")
+      Grads_Regrid("data","tref",dims_globe)
+     data = ga.exp(vars[var])
+     fp.variables[vars[var]][t-2] = data
+    #Close file
+    fp.close()
+    #Close grads file 
     ga("close 1")
-     
- 
 
  return
 
