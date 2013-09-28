@@ -167,10 +167,11 @@ idate = fdate - datetime.timedelta(days=20)
 #idate = fdate
 print idate
 print fdate
-date = datetime.datetime(2013,9,15)
+#date = datetime.datetime(2013,9,15)
 #print date
-ml.Download_and_Process_Seasonal_Forecast(date,True)
-exit()
+#ml.Download_and_Process_Seasonal_Forecast(date,True)
+#ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
+#exit()
 #idate = datetime.datetime(2003,1,31)
 #fdate = datetime.datetime(2003,12,31)
 #Download and bias correct data

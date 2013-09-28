@@ -1599,7 +1599,6 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
  print_info_to_command_line("Downloading the monthly seasonal forecast")
 
- '''
  models = ('CMC1-CanCM3','CMC2-CanCM4','COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012')
  nensembles = (10,10,6,10,12)
  type = ('.FORECAST/','.FORECAST/','','','')
@@ -1620,10 +1619,8 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
     file_out = '{0}/{1}_{2}.nc'.format(dir,model,ens)
     os.system('wget -nv -O {0} {1}'.format(file_out,http_file))
    i = i + 1
- '''
 
  #Download CFS-V2
- '''
  models = ('CFSv2',)
  nensembles = (24,)
  vars = {'PRATE':'surface','TMP':'2m_above_ground'}
@@ -1645,7 +1642,6 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
     os.system('wget -nv -O {0} {1}'.format(file_out,http_file))
     os.system('ncwa -O -a S,M %s %s' % (file_out,file_out))
    i = i + 1
- '''
 
  #Regrid and extract only months 2-7 for each ensemble member
  dims_globe = {}
@@ -1658,7 +1654,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
  dims_globe['maxlon'] = dims_globe['minlon'] + dims_globe['res']*(dims_globe['nlon']-1)
  nt = 6
  tstep = 'months'
- models = ('CFSv2',)
+ models = {'CFSv2':'NCEP-CFSv2',}
  vars = {'PRATE':'prec','TMP':'tref'}
  for var in vars:
   dir_old = dir0 + '/' + var
@@ -1667,7 +1663,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
    for ens in xrange(1,24+1):
     print model,var,ens
     file_out_org = '{0}/{1}_{2}.nc'.format(dir_old,model,ens)
-    file_out_new = '{0}/{1}_{2}.nc'.format(dir_new,model,ens)
+    file_out_new = '{0}/{1}_{2}.nc'.format(dir_new,models[model],ens)
     variables = [vars[var],]
     vars_info = [vars[var],]
     #Create file
@@ -1698,7 +1694,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
 def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag):
 
- models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11}
+ models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11,'NCEP-CFSv2':24}
  #models = {'CMC1-CanCM3':1,'CMC2-CanCM4':1,'COLA-RSMAS-CCSM3':1,'GFDL-CM2p1-aer04':1,'NASA-GMAO-062012':1}
  file = '../DATA/SEASONAL_FORECAST/%04d%02d/CMC1-CanCM3_10_sf.nc' % (date.year,date.month)
 

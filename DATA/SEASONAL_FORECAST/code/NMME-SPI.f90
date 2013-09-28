@@ -1674,16 +1674,16 @@ end module
 program NMMEspi
 use netcdf
 IMPLICIT NONE
-integer, parameter::clon=360,clat=181,dims=5,fcst=6,year=29,yclim=61,nparam=5,ens=47,nvar=2,nvar1=5
+integer, parameter::clon=360,clat=181,dims=5,fcst=6,year=29,yclim=61,nparam=6,ens=71,nvar=2,nvar1=5
 integer :: i,ii,j,jj,jjj,k,kk,kkk,ll,nkk
 integer :: status,ncid,ncid1,varid(nvar1+3),varid1
 integer :: start(dims),count(dims),dimids(dims)
 integer lon_dimid, lat_dimid, fcst_dimid, ens_dimid, mod_dimid, year_dimid, bmon_dimid
 integer cnt,tnm,ntag,ens1(nparam),spilead(4),yr1,nm1,day(12),nday
-data ens1/6,10,11,10,10/,spilead/1,3,6,12/,day/31,28,31,30,31,30,31,31,30,31,30,31/
+data ens1/6,10,11,10,10,24/,spilead/1,3,6,12/,day/31,28,31,30,31,30,31,31,30,31,30,31/
 !data ens1/1,1,1,1,1/,spilead/1,3,6,12/,day/31,28,31,30,31,30,31,31,30,31,30,31/
-character(len=*),parameter::model(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012','CMC1-CanCM3','CMC2-CanCM4'/), &
-                            vcase(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1','NASA-GMAO','CMC1-CanCM3','CMC2-CanCM4'/), &
+character(len=*),parameter::model(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012','CMC1-CanCM3','CMC2-CanCM4','NCEP-CFSv2'/), &
+                            vcase(nparam) = (/'COLA-RSMAS-CCSM3','GFDL-CM2p1','NASA-GMAO','CMC1-CanCM3','CMC2-CanCM4','NCEP-CFSv2'/), &
                             varname(nvar) = (/'PR','T2M'/), &
                             vardesc(nvar) = (/'total precipitation','2m temperature'/), &
                             varunit(nvar) = (/'mm/day','C'/), &
@@ -1755,6 +1755,7 @@ do kk=1,nparam
       end do
    end do
 end do
+print*,'here'
 var1(clon+1,:,:,:,:)=var1(1,:,:,:,:)
 var=-9.99e+08
 do i=1,wlon
