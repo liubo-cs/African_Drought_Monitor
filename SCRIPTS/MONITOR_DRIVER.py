@@ -148,19 +148,6 @@ def Compute_Averages(date,idate):
   itime = dataset_info[dataset]['itime']
   ftime = dataset_info[dataset]['ftime']
   ml.Compute_Monthly_Yearly_Averages(date,dims,dt,dataset,ctl,type,Averages_Reprocess_Flag,itime,ftime)
- '''
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'PGF',"../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'3B42RT_BC',"../DATA/3B42RT_BC/DAILY/3B42RT_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'GFS_ANL_BC',"../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_PGF',"../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_3B42RT',"../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_PGF',"../DATA/ROUTING_VIC_PGF/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_3B42RT',"../DATA/ROUTING_VIC_3B42RT/DAILY/Streamflow.ctl","open",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'MOD09_NDVI_MA',"../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'VIC_DERIVED',"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'ROUTING_VIC_DERIVED',"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- ml.Compute_Monthly_Yearly_Averages(date,dims,dt,'SPI',"../DATA/SPI/DAILY/spi_daily_0.25deg.ctl","xdfopen",Averages_Reprocess_Flag)
- '''
 
  return
 
@@ -174,11 +161,15 @@ dims['maxlat'] = dims['minlat'] + dims['res']*(dims['nlat']-1)
 dims['maxlon'] = dims['minlon'] + dims['res']*(dims['nlon']-1)
 dt = datetime.timedelta(days=1)
 fdate = datetime.datetime.today() - 3*dt
-idate = datetime.datetime(fdate.year,fdate.month,1)
+#idate = datetime.datetime(fdate.year,fdate.month,1)
 fdate = datetime.datetime(fdate.year,fdate.month,fdate.day)
+idate = fdate - datetime.timedelta(days=20)
 #idate = fdate
 print idate
 print fdate
+#date = datetime.datetime(2013,9,15)
+#print date
+#ml.Download_and_Process_Seasonal_Forecast(date,True)
 #exit()
 #idate = datetime.datetime(2003,1,31)
 #fdate = datetime.datetime(2003,12,31)
@@ -190,14 +181,15 @@ while date <= fdate:
  date = date + dt
 
 #Run VIC
-ml.Run_VIC(idate,fdate,dims,'3b42rt',False)
+idate_model = datetime.datetime(fdate.year,fdate.month,1)
+ml.Run_VIC(idate_model,fdate,dims,'3b42rt',False)
 #ml.Run_VIC(idate,fdate,dims,'pgf')
-ml.Run_VIC(idate,fdate,dims,'gfs_forecast',False)
+ml.Run_VIC(idate_model,fdate,dims,'gfs_forecast',False)
 
 #Run the Routing model
 #ml.Run_VDSC(idate,fdate+datetime.timedelta(days=7),dims,'pgf')
-ml.Run_VDSC(idate,fdate,dims,'3b42rt')
-ml.Run_VDSC(idate,fdate,dims,'gfs_forecast')
+ml.Run_VDSC(idate_model,fdate,dims,'3b42rt')
+ml.Run_VDSC(idate_model,fdate,dims,'gfs_forecast')
 
 #Compute Monitor Indices
 date = idate

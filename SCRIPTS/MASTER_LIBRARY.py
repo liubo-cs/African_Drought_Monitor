@@ -512,6 +512,9 @@ def Download_and_Process_NDVI(date,dims,Reprocess_Flag):
  filename = '../WORKSPACE/MOD09CMG.005_%04d.%02d.%02d.hdf' % (date.year,date.month,date.day)
 
  #Check to see if file exists
+ if os.path.exists(filename) == False:
+  print "File does not exist"
+  return
  '''
  if os.path.exists(filename) == False:
   print "File does not exist, placing an empty holder"
@@ -657,6 +660,9 @@ def Compute_NDVI_moving_average(date,dims,Reprocess_Flag):
  modis_root = '../DATA/MOD09_NDVI_MA/DAILY'
  netcdf_file = 'MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  file = '%s/%s' % (modis_root,netcdf_file)
+ file_org = "../DATA/MOD09_NDVI/DAILY/%s" % netcdf_file
+ if os.path.exists(file_org) == False:
+  return
 
  #If the date is before the product's start date:
  itime = datetime.datetime(2003,1,1)
@@ -1464,6 +1470,10 @@ def Update_Control_File(type,idate,dims,nt,tstep,file_template,ctl_file):
 
 def Calculate_and_Output_NDVI_Percentiles(date,dims,Reprocess_Flag):
 
+ file_org = '../DATA/MOD09_NDVI_MA/DAILY/MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ if os.path.exists(file_org) == False:
+  return
+
  #define parameters
  file_out = '../DATA/MOD09_NDVI_MA_DERIVED/DAILY/MOD09CMG_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
@@ -1580,7 +1590,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
   return
 
  #If the directory already exists exit
- if os.path.exists(dir0) == True:
+ if os.path.exists(dir0) == True and Reprocess_Flag == False:
   return
 
  #If it before the 15th do not attempt to download
@@ -1589,6 +1599,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
  print_info_to_command_line("Downloading the monthly seasonal forecast")
 
+ '''
  models = ('CMC1-CanCM3','CMC2-CanCM4','COLA-RSMAS-CCSM3','GFDL-CM2p1-aer04','NASA-GMAO-062012')
  nensembles = (10,10,6,10,12)
  type = ('.FORECAST/','.FORECAST/','','','')
@@ -1609,6 +1620,51 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
     file_out = '{0}/{1}_{2}.nc'.format(dir,model,ens)
     os.system('wget -nv -O {0} {1}'.format(file_out,http_file))
    i = i + 1
+ '''
+
+ #Download CFS-V2
+ '''
+ models = ('CFSv2',)
+ nensembles = (24,)
+ vars = {'PRATE':'surface','TMP':'2m_above_ground'}
+ idate = datetime.datetime(date.year,date.month,1) - datetime.timedelta(days=1)
+ if not os.path.exists(dir0):
+  os.makedirs(dir0)
+ for var in vars:
+  dir = dir0 + '/' + var
+  if not os.path.exists(dir):
+   os.makedirs(dir)
+  i = 0 
+  for model in models:
+   for ens in xrange(1,nensembles[i]+1):
+    date = idate - (ens-1)*datetime.timedelta(days=1)
+    print ens,date
+    root = ''
+    http_file = 'http://iridl.ldeo.columbia.edu/SOURCES/.NOAA/.NCEP/.EMC/.CFSv2/.MONTHLY_REALTIME/.FLXF/.{3}/.{4}/M/%280%29%280%29RANGEEDGES/S/%280000%20{0}%20{1}%20{2}%29VALUES/-9.9900000E08/setmissing_value/data.cdf'.format(date.day,date.strftime('%b'),date.year,vars[var],var)
+    file_out = '{0}/{1}_{2}.nc'.format(dir,model,ens)
+    os.system('wget -nv -O {0} {1}'.format(file_out,http_file))
+    os.system('ncwa -O -a S,M %s %s' % (file_out,file_out))
+   i = i + 1
+ '''
+
+ #Regrid and extract only months 2-7 for each ensemble member
+ models = ('CFSv2',)
+ vars = {'PRATE':'prec','TMP':'tref'}
+ for var in vars:
+  dir_old = dir0 + '/' + var
+  dir_new = dir0 + '/' + vars[var]
+  for model in models:
+   for ens in xrange(1,24+1):
+    file_out_org = '{0}/{1}_{2}.nc'.format(dir_old,model,ens)
+    file_out_new = '{0}/{1}_{2}.nc'.format(dir_new,model,ens)
+    #Open file in grads
+    ga("sdfopen %s" % file_out_org)
+    #Regrid and export to new file
+    #for t in xrange(2,7+1):
+    # ga("set t %d" % t)
+    ga("close 1")
+     
+ 
 
  return
 
