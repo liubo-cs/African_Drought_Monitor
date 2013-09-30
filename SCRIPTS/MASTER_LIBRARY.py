@@ -21,6 +21,9 @@ import dateutil.relativedelta as relativedelta
 import time
 import random
 import cPickle as pickle
+import matplotlib as mpl
+mpl.use('GTKAgg')
+import matplotlib.pyplot as plt
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
 
@@ -1689,6 +1692,9 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
     fp.close()
     #Close grads file 
     ga("close 1")
+
+ #Reinitialize grads
+ ga("reinit")
 
  return
 

@@ -54,7 +54,7 @@ def Download_and_Process(date):
  ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
- ml.Download_and_Process_Seasonal_Forecast(date,False)
+ ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
 
  #Download and process the gfs analysis data
  ml.Download_and_Process_GFS_Analysis(date,dims,False)
@@ -172,8 +172,6 @@ print fdate
 #ml.Download_and_Process_Seasonal_Forecast(date,True)
 #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,True)
 #exit()
-#idate = datetime.datetime(2003,1,31)
-#fdate = datetime.datetime(2003,12,31)
 #Download and bias correct data
 date = idate
 while date <= fdate:
