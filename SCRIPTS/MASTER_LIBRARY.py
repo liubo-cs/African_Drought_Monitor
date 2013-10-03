@@ -21,9 +21,9 @@ import dateutil.relativedelta as relativedelta
 import time
 import random
 import cPickle as pickle
-import matplotlib as mpl
-mpl.use('GTKAgg')
-import matplotlib.pyplot as plt
+#import matplotlib as mpl
+#mpl.use('GTKAgg')
+#import matplotlib.pyplot as plt
 grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
 ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
 
@@ -227,6 +227,7 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
 
  #Download GFS Analysis for the entire day
  idate = date
+ flag_missing = False
  dt = datetime.timedelta(hours=6)
  for i in xrange(0,4):
   date2 = date
@@ -239,56 +240,65 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
    date2 = date2 - datetime.timedelta(days=1)
    if (date - date2).days > 10: 
     print "Missing GFS analysis data for more than 10 days"
-    return
+    flag_missing = True
+    break
   date = date + dt
 
- #Create index and control file for the entire period
- ctl_file = 'gfsanl_3_%04d%02d%02d_0000_000.ctl' % (idate.year,idate.month,idate.day)
- grb_file = 'gfsanl_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
- os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
+ if flag_missing == False:
 
- #Create index file
- gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
- os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
+  #Create index and control file for the entire period
+  ctl_file = 'gfsanl_3_%04d%02d%02d_0000_000.ctl' % (idate.year,idate.month,idate.day)
+  grb_file = 'gfsanl_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
+  os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
 
- #Open access to the file
- ga("open %s/%s" % (workspace,ctl_file))
+  #Create index file
+  gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+  os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
 
- #Set region
- ga("set lat -89.5 89.5")
- ga("set lon -179.5 179.5")
+  #Open access to the file
+  ga("open %s/%s" % (workspace,ctl_file))
 
- #Define the output variables
- ga("tmax0 = max(tmp2m,t=1,t=4)")
- ga("tmin0 = min(tmp2m,t=1,t=4)")
- ga("wind0 = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
+  #Set region
+  ga("set lat -89.5 89.5")
+  ga("set lon -179.5 179.5")
 
- #Set to new region
- ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
- ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+  #Define the output variables
+  ga("tmax0 = max(tmp2m,t=1,t=4)")
+  ga("tmin0 = min(tmp2m,t=1,t=4)")
+  ga("wind0 = pow(pow(ave(UGRD10m,t=1,t=4),2) + pow(ave(VGRD10m,t=1,t=4),2),0.5)")
 
- #Regrid to 1/4 degree
- Grads_Regrid("tmax0","tmax0",dims)
- Grads_Regrid("tmin0","tmin0",dims)
- Grads_Regrid("wind0","wind0",dims)
+  #Set to new region
+  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
 
- #Create and open access to netcdf file
- vars = ['tmax','tmin','wind']
- vars_info = ['daily tmax (K)','daily tmin (K)','daily mean wind speed (m/s)']
- nt = 1
- tstep = 'days'
- fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,idate,tstep,nt)
+  #Regrid to 1/4 degree
+  Grads_Regrid("tmax0","tmax0",dims)
+  Grads_Regrid("tmin0","tmin0",dims)
+  Grads_Regrid("wind0","wind0",dims)
 
- #Write to file
- for var in vars:
-  data = np.ma.getdata(ga.exp(var+'0'))
-  fp.variables[var][0] = data
+  #Create and open access to netcdf file
+  vars = ['tmax','tmin','wind']
+  vars_info = ['daily tmax (K)','daily tmin (K)','daily mean wind speed (m/s)']
+  nt = 1
+  tstep = 'days'
+  fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,idate,tstep,nt)
 
- #Close access to all files in grads
- ga("close 1")
+  #Write to file
+  for var in vars:
+   data = np.ma.getdata(ga.exp(var+'0'))
+   fp.variables[var][0] = data
 
- #Remove files from the workspace
- os.system('rm -f %s/gfsanl_3*' % workspace)
+  #Close access to all files in grads
+  ga("close 1")
+
+  #Remove files from the workspace
+  os.system('rm -f %s/gfsanl_3*' % workspace)
+
+ elif flag_missing == True:
+  file = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date.year,date.month,date.day,dims['res'])
+  date_old = date - relativedelta.relativedelta(years=1)
+  file_old = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date_old.year,date_old.month,date_old.day,dims['res'])
+  os.system("cp %s %s" % (file_old,file))
 
  #Update the control file
  ctl_out = '../DATA/GFS_ANL/DAILY/gfsanl_daily_0.25deg.ctl'

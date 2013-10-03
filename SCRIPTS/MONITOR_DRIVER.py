@@ -51,7 +51,7 @@ def Download_and_Process(date):
  ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
- ml.Download_and_Process_NDVI(date,dims,False)
+ #ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
  ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
