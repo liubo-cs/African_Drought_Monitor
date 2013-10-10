@@ -51,7 +51,7 @@ def Download_and_Process(date):
  ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
- #ml.Download_and_Process_NDVI(date,dims,False)
+ ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
  ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
@@ -69,6 +69,9 @@ def BiasCorrect(date):
 
  ml.print_info_to_command_line("Bias Correcting for %d/%d/%d" % (date.day,date.month,date.year))
 
+ #Bias correct the gfs forecast
+ ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
+
  #Regrid and downscale 3b42rt (ensure it complies with the pgf grid)
  ml.Regrid_and_Output_3B42rt(date,dims,False)
 
@@ -77,9 +80,6 @@ def BiasCorrect(date):
 
  #Bias correct the gfs final analysis product
  #ml.BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims)
-
- #Bias correct the gfs forecast
- ml.BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,False)
  
  #Compute different moving averages of the ndvi product
  ml.Compute_NDVI_moving_average(date,dims,False)

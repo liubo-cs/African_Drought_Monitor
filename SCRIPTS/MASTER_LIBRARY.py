@@ -334,10 +334,17 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
   #ftp_root = 'ftp://trmmopen.gsfc.nasa.gov/pub/merged/mergeIRMicro/%04d' % date.year
   file = "3B42RT.%04d.%02d.%02d.%02dz.bin" % (date.year,date.month,date.day,date.hour)
   ftp_file = '%s/%s' % (ftp_root,file)
+  print ftp_file
   dwncmd = 'wget -nv -P %s %s' % (workspace,ftp_file)
   #if os.path.isfile('%s/%s' % (workspace,file)) == False:
   os.system(dwncmd)
   date = date + dt
+
+ #Determine if file exists, if not return
+ tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,date.year,date.month,date.day,date.hour)
+ if os.path.exists(tmp_file) == False:
+  print "3B42RT files cannot be retrieved"
+  return
 
  #Construct the control file
  ctl_file = '3B42RT.%04d.%02d.%02d.ctl' % (idate.year,idate.month,idate.day)
@@ -867,6 +874,9 @@ def Regrid_and_Output_3B42rt(date,dims,Reprocess_Flag):
   return
 
  file_in = '../DATA/3B42RT/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ if os.path.exists(file_in) == False:
+  print 'Original 3B42RT file does exit. Cannot regrid, exiting'
+  return
  ga("sdfopen %s" % file_in)
 
  #Regrid data
@@ -1134,6 +1144,7 @@ def BiasCorrect_and_Output_Forcing_FNL_Daily(date,dims,Reprocess_Flag):
 def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,Reprocess_Flag):
 
  #define parameters
+ file_in = '../DATA/3B42RT_RG/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
  file_out = '../DATA/3B42RT_BC/DAILY/3B42RT_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
 
  #Update the control file
@@ -1142,6 +1153,12 @@ def BiasCorrect_and_Output_Forcing_3B42RT_Daily(date,dims,Reprocess_Flag):
  nt = (date - itime).days + 1
  file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('3B42RT','%y4','%m2','%d2')
  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+ if os.path.exists(file_in) == False:
+  print "No 3b42RT product to bias correct. Using the GFS forecast for today"
+  file_in = '../DATA/GFS_BC/%04d%02d%02d/gfs_%04d%02d%02d_daily_0.250deg_day1.nc' % (date.year,date.month,date.day,date.year,date.month,date.day)
+  os.system("cp %s %s" % (file_in,file_out))
+  return
 
  #If the file exists then exit (unless we are reprocessing the data)
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
@@ -2279,7 +2296,7 @@ def Run_VIC(idate,fdate,dims,dataset,Reprocess_Flag):
    fdate = datetime.datetime(2008,12,31)
   if idate < datetime.datetime(1948,1,1):
    idate = datetime.datetime(1948,1,1)
-  if (fdate - idate).days <= 0:
+  if (fdate - idate).days < 0:
    return
   file = '../DATA/VIC_PGF/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
   if os.path.exists(file) and Reprocess_Flag == False:
@@ -2289,7 +2306,7 @@ def Run_VIC(idate,fdate,dims,dataset,Reprocess_Flag):
   idate_all = datetime.datetime(2003,1,1)
   if idate < datetime.datetime(2003,1,1):
    idate = datetime.datetime(2003,1,1)
-  if (fdate-idate).days <= 0:
+  if (fdate-idate).days < 0:
    return
   file = '../DATA/VIC_3B42RT/DAILY/output_grid_%04d%02d%02d00' % (fdate.year,fdate.month,fdate.day)
   if os.path.exists(file) and Reprocess_Flag == False:
@@ -2298,7 +2315,7 @@ def Run_VIC(idate,fdate,dims,dataset,Reprocess_Flag):
  if dataset == 'gfsanl':
   if idate < datetime.datetime(2010,1,1):
    idate = datetime.datetime(2010,1,1)
-  if (fdate-idate).days <= 0:
+  if (fdate-idate).days < 0:
    return
  if dataset == 'gfs_forecast':
   idate = fdate + datetime.timedelta(days=1)
