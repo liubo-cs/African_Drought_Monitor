@@ -51,7 +51,7 @@ def Download_and_Process(date):
  ml.Download_and_Process_GFS_forecast(date,dims,False)
 
  #Download and process modis NDVI
- #ml.Download_and_Process_NDVI(date,dims,False)
+ ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
  ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
@@ -121,7 +121,7 @@ def Compute_Forecast_Indices(date,idate):
 
  ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,Reprocess_Flag)
  
- ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,False)
+ ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(idate,dims,False)
 
  return
 
@@ -178,7 +178,6 @@ while date <= fdate:
  Download_and_Process(date)
  BiasCorrect(date)
  date = date + dt
-exit()
 
 #Run VIC
 idate_model = datetime.datetime(fdate.year,fdate.month,1)
