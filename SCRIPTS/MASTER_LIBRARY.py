@@ -231,17 +231,19 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
  dt = datetime.timedelta(hours=6)
  for i in xrange(0,4):
   date2 = date
-  while os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
-   ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
-   cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
-   os.system(cmd)
-   if (date - date2).days > 0:
-    os.system("mv ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb" % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour))
-   date2 = date2 - datetime.timedelta(days=1)
-   if (date - date2).days > 10: 
-    print "Missing GFS analysis data for more than 10 days"
-    flag_missing = True
-    break
+  #while os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+  ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
+  cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
+  os.system(cmd)
+  #if (date - date2).days > 0:
+  # os.system("mv ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb" % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour))
+  #date2 = date2 - datetime.timedelta(days=1)
+  #if (date - date2).days > 10: 
+  if os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+   print "Missing GFS analysis data."
+   return
+  # flag_missing = True
+  # break
   date = date + dt
 
  if flag_missing == False:
@@ -1021,6 +1023,12 @@ def BiasCorrect_and_Output_GFSANL_Daily(date,dims,Reprocess_Flag):
  #If the file exists then exit (unless we are reprocessing the data)
  if os.path.exists(file_out) == True and Reprocess_Flag == False:
   return
+
+ #If the input file does exist then use gfs
+ file_in = '../DATA/GFS_ANL/DAILY/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ if os.path.exists(file_in) == False:
+  gfs_in = '../DATA/GFS_BC/%04d%02d%02d/gfs_%04d%02d%02d_daily_0.250deg_day1.nc' % (date.year,date.month,date.day,date.year,date.month,date.day)
+  missing_flag = True
  
  if date < itime:
   return
@@ -1050,24 +1058,32 @@ def BiasCorrect_and_Output_GFSANL_Daily(date,dims,Reprocess_Flag):
  
   print var
 
-  #Extract the required data
-  print "Extracting pgf data (Climatology)"
-  dt_up = relativedelta.relativedelta(days=30)
-  dt_down = relativedelta.relativedelta(days=30)
-  data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
-  print "Extracing anl data (Climatology)"
-  dt_up = relativedelta.relativedelta(days=30)
-  dt_down = relativedelta.relativedelta(days=30)
-  data_anl_clim = Extract_Data_Period_Average(idate_anl,fdate_anl,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
-  print "Extracing anl data (To correct)"
-  dt_up = relativedelta.relativedelta(days=0)
-  dt_down = relativedelta.relativedelta(days=0)
-  data_anl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
+  if missing_flag == False:
+
+   #Extract the required data
+   print "Extracting pgf data (Climatology)"
+   dt_up = relativedelta.relativedelta(days=30)
+   dt_down = relativedelta.relativedelta(days=30)
+   data_pgf_clim = Extract_Data_Period_Average(idate_pgf,fdate_pgf,dt_down,dt_up,dt,ctl_pgf,var,type,'xdfopen')
+   print "Extracing anl data (Climatology)"
+   dt_up = relativedelta.relativedelta(days=30)
+   dt_down = relativedelta.relativedelta(days=30)
+   data_anl_clim = Extract_Data_Period_Average(idate_anl,fdate_anl,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
+   print "Extracing anl data (To correct)"
+   dt_up = relativedelta.relativedelta(days=0)
+   dt_down = relativedelta.relativedelta(days=0)
+   data_anl = Extract_Data_Period_Average(date,date,dt_down,dt_up,dt,ctl_anl,var,type,'xdfopen')
 
 
-  #CDF match the data
-  print "Matching the daily anl to the pgf"
-  data_anl_corrected = CDF_Match(data_pgf_clim,data_anl_clim,data_anl)
+   #CDF match the data
+   print "Matching the daily anl to the pgf"
+   data_anl_corrected = CDF_Match(data_pgf_clim,data_anl_clim,data_anl)
+
+  elif missing_flag == True:
+   print "No GFS-ANL product to bias correct. Using the GFS forecast for today"
+   ga("sdfopen %s" % gfs_in)
+   data_anl_corrected = ga.exp(var)
+   ga("close 1")
 
   #Write to file
   fp.variables[var][0] = data_anl_corrected
