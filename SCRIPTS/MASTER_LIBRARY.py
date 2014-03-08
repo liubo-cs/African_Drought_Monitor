@@ -343,7 +343,8 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
   date = date + dt
 
  #Determine if file exists, if not return
- tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,date.year,date.month,date.day,date.hour)
+ tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
+ print tmp_file
  if os.path.exists(tmp_file) == False:
   print "3B42RT files cannot be retrieved"
   return
@@ -1029,6 +1030,8 @@ def BiasCorrect_and_Output_GFSANL_Daily(date,dims,Reprocess_Flag):
  if os.path.exists(file_in) == False:
   gfs_in = '../DATA/GFS_BC/%04d%02d%02d/gfs_%04d%02d%02d_daily_0.250deg_day1.nc' % (date.year,date.month,date.day,date.year,date.month,date.day)
   missing_flag = True
+ else:
+  missing_flag = False
  
  if date < itime:
   return
@@ -1782,7 +1785,7 @@ def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag)
  fp.close()
 
  #Run program
- os.system('./NMME-SPI.sh >& ../WORKSPACE/NMME-SPI_log.txt')
+ os.system('./NMME-SPI.sh >& NMME-SPI_log.txt')
 
  #Change back to original directory
  os.chdir(owd)
