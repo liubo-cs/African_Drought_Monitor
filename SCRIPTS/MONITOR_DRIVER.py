@@ -167,7 +167,8 @@ idate = fdate - datetime.timedelta(days=20)
 #idate = fdate
 print idate
 print fdate
-date = datetime.datetime(2014,2,20)
+#date = datetime.datetime(2014,8,20)
+#date = datetime.datetime(2014,2,20)
 #print date
 #date = fdate
 #ml.Download_and_Process_Seasonal_Forecast(date,True)

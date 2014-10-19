@@ -1643,7 +1643,7 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
   return
 
  #If it before the 15th do not attempt to download
- if date.day < 15:
+ if date.day < 10:
   return
 
  print_info_to_command_line("Downloading the monthly seasonal forecast")
@@ -1759,7 +1759,7 @@ def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag)
   return
 
  #If it before the 15th do not attempt to download
- if date.day < 15:
+ if date.day < 10:
   return
 
  #Compute anomalies and SPI
