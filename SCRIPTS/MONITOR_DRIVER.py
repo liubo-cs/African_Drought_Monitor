@@ -28,6 +28,8 @@ dataset_info = {
         'VIC_DERIVED':{'ctl':"../DATA/VIC_DERIVED/DAILY/vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
         'ROUTING_VIC_DERIVED':{'ctl':"../DATA/ROUTING_VIC_DERIVED/DAILY/routing_vic_derived_daily_0.25deg.ctl",'type':"xdfopen"},
         'SPI':{'ctl':"../DATA/SPI/DAILY/spi_daily_0.25deg.ctl",'type':"xdfopen"},
+        'SMAP_SM':{'ctl':"../DATA/SMAP_SM/DAILY/SMAP_SM_daily_0.25deg.ctl",'type':"xdfopen"},
+        'SMAP_SM_MA':{'ctl':"../DATA/SMAP_SM_MA/DAILY/SMAP_SM_daily_0.25deg.ctl",'type':"xdfopen"},
         }
 
 def Download_and_Process(date):
@@ -47,17 +49,26 @@ def Download_and_Process(date):
  #Download and process the 3b42rt precipitation data
  ml.Download_and_Process_3b42RT(date,dims,False)
 
- #Download gfs forecast
- ml.Download_and_Process_GFS_forecast(date,dims,False)
+ #Download and process the GFS Analysis precipitation data to supplement missing 3b42rt
+ #ml.Download_and_Process_GFS_Analysis_Precip(date,dims,'NCEP',False)
+
+ #Download and process the gfs analysis data
+ ml.Download_and_Process_GFS_Analysis(date,dims,'NCEP',False)
+
+ #Download and process the gfs analysis data
+ #ml.Download_and_Process_GFS_Analysis(date,dims,False)
 
  #Download and process modis NDVI
  ml.Download_and_Process_NDVI(date,dims,False)
 
  #Download and process the seasonal forecast
- ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
+ #ml.Download_and_Process_Seasonal_Forecast(date,False) #CHANGE BACK TO FALSE
 
- #Download and process the gfs analysis data
- ml.Download_and_Process_GFS_Analysis(date,dims,False)
+ #Download gfs forecast
+ ml.Download_and_Process_GFS_forecast(date,dims,False)
+
+ #Download SMAP data
+ ml.Download_and_Process_SMAP(date,dims,False)
 
  return
 
@@ -83,6 +94,9 @@ def BiasCorrect(date):
  
  #Compute different moving averages of the ndvi product
  ml.Compute_NDVI_moving_average(date,dims,False)
+
+ #Compute moving average for the SMAP soilm product
+ ml.Compute_SMAP_moving_average(date,dims,False)
 
  #Bias correct the gfs analysis product
  ml.BiasCorrect_and_Output_GFSANL_Daily(date,dims,False)
@@ -121,7 +135,7 @@ def Compute_Forecast_Indices(date,idate):
 
  ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,Reprocess_Flag)
  
- ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(idate,dims,False)
+ #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(idate,dims,False)
 
  return
 
@@ -163,7 +177,9 @@ dt = datetime.timedelta(days=1)
 fdate = datetime.datetime.today() - 3*dt
 #idate = datetime.datetime(fdate.year,fdate.month,1)
 fdate = datetime.datetime(fdate.year,fdate.month,fdate.day)
-idate = fdate - datetime.timedelta(days=20)
+#fdate = datetime.datetime(fdate.year,1,31)
+#idate = fdate - datetime.timedelta(days=20)
+idate = fdate - datetime.timedelta(days=50)
 #idate = fdate
 print idate
 print fdate
@@ -183,7 +199,8 @@ while date <= fdate:
  date = date + dt
 
 #Run VIC
-idate_model = datetime.datetime(fdate.year,fdate.month,1)
+#idate_model = datetime.datetime(fdate.year,fdate.month,1)
+idate_model = datetime.datetime(fdate.year,1,1)
 ml.Run_VIC(idate_model,fdate,dims,'3b42rt',False)
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 ml.Run_VIC(idate_model,fdate,dims,'gfs_forecast',False)
@@ -216,4 +233,6 @@ while date <= fdate:
 #Finalize GFS forecast
 ml.Finalize_GFS_forecast(fdate+datetime.timedelta(days=1),dims)
 
+ml.Download_and_Process_Seasonal_Forecast(fdate,False)
+ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(fdate,dims,False)
 #ml.Finalize_NCEP_FNL_Connection()

@@ -80,6 +80,11 @@ def Grads_Regrid(var_in,var_out,dims):
 
  return
 
+def Grads_Regrid_gzip(var_in,var_out,dims,ga):
+
+ ga("%s = re(%s,%d,linear,%f,%f,%d,linear,%f,%f)" % (var_out,var_in,dims['nlon'],dims['minlon'],dims['res'],dims['nlat'],dims['minlat'],dims['res']))
+ return
+
 def Initialize_NCEP_FNL_Connection():
 
  print "Initializing FNL connection"
@@ -208,7 +213,7 @@ def Download_and_Process_NCEP_FNL_Analysis(date,dims,idate,fdate,Reprocess_Flag)
  #Remove files from the workspace
  os.system('rm -f %s/fnl_*' % workspace)
 
-def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
+def Download_and_Process_GFS_Analysis(date,dims,dset,Reprocess_Flag):
 
  gfs_anl_root = '../DATA/GFS_ANL/DAILY'
  workspace = '../WORKSPACE'
@@ -229,40 +234,93 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
  idate = date
  flag_missing = False
  dt = datetime.timedelta(hours=6)
- for i in xrange(0,4):
-  date2 = date
-  #while os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
-  ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
-  cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
-  os.system(cmd)
-  #if (date - date2).days > 0:
-  # os.system("mv ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb" % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour))
-  #date2 = date2 - datetime.timedelta(days=1)
-  #if (date - date2).days > 10: 
-  if os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
-   print "Missing GFS analysis data."
-   return
-  # flag_missing = True
-  # break
-  date = date + dt
+ 
+ if dset == 'NCEP':
+   #Create and open access to netcdf file
+   netcdf_tmp = '../WORKSPACE/gfsanl_%04d%02d%02d.nc' % (date.year,date.month,date.day)
+   vars = {'tmp2m':'tmpprs','UGRD10m':'ugrdprs','VGRD10m':'vgrdprs'}
+   vars_info = ['Temperature [K]','Udir Wind Velocity','Vdir Wind Velocity']
+   nt = 4
+   tstep = 'days'
+   dimst = {}
+   dimst['minlat'] = -90.0
+   dimst['minlon'] = 0.0
+   dimst['nlat'] = 181 
+   dimst['nlon'] = 360
+   dimst['res'] = 1.000
+   dimst['maxlat'] = dimst['minlat'] + dimst['res']*(dimst['nlat']-1)
+   dimst['maxlon'] = dimst['minlon'] + dimst['res']*(dimst['nlon']-1)
+   
+   fpt = Create_NETCDF_File(dimst,netcdf_tmp,vars,vars_info,idate,tstep,nt)
+
+   #Loop through timesteps 1 to 4 and open the gds url for each one
+   times = ['00z','06z','12z','18z']
+   for t in xrange(0,4):
+     #Create http url and open
+     http = 'http://nomads.ncep.noaa.gov:80/dods/gfs_0p25/gfs%04d%02d%02d/gfs_0p25_%s_anl' % (date.year,date.month,date.day,times[t])
+     try:
+       ga("sdfopen %s" % http) 
+     except:
+       print "Missing GFS analysis data. Filling in with previous year."
+       flag_missing = True
+       break
+
+     #Extract the 3 variables at each timestep and combine 
+     #Set to new region
+     ga("set lat -90 90") 
+     ga("set lon 0 360") 
+     ga("set lev 1000")
+     
+     #Write to file
+     for var in vars:
+       data = np.ma.getdata(ga.exp("re(%s,1.0)" % vars[var]))
+       fpt.variables[var][t] = data
+     #Close access to all files in grads
+     ga("close 1")
+   fpt.close()
+
+ if dset == 'NCDC':
+   for i in xrange(0,4):
+    date2 = date
+    #while os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+    ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/analysis_only/%04d%02d/%04d%02d%02d/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
+    cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file 
+    os.system(cmd)
+    #if (date - date2).days > 0:
+    # os.system("mv ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb" % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour))
+    #date2 = date2 - datetime.timedelta(days=1)
+    #if (date - date2).days > 10: 
+    if os.path.exists('../WORKSPACE/gfsanl_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+     print "Missing GFS analysis data. Filling in with previous day."
+     #return
+     flag_missing = True
+     break
+    date = date + dt
 
  if flag_missing == False:
 
-  #Create index and control file for the entire period
-  ctl_file = 'gfsanl_3_%04d%02d%02d_0000_000.ctl' % (idate.year,idate.month,idate.day)
-  grb_file = 'gfsanl_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
-  os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
+  if dset == 'NCDC':
+    #Create index and control file for the entire period
+    ctl_file = 'gfsanl_3_%04d%02d%02d_0000_000.ctl' % (idate.year,idate.month,idate.day)
+    grb_file = 'gfsanl_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
+    os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
 
-  #Create index file
-  gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
-  os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
+    #Create index file
+    gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+    os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
 
-  #Open access to the file
-  ga("open %s/%s" % (workspace,ctl_file))
+    #Open access to the file
+    ga("open %s/%s" % (workspace,ctl_file))
+    #Set region
+    ga("set lat -89.5 89.5")
+    ga("set lon -179.5 179.5")
 
-  #Set region
-  ga("set lat -89.5 89.5")
-  ga("set lon -179.5 179.5")
+  elif dset == 'NCEP':
+    #Open access to the file
+    ga("sdfopen %s" % (netcdf_tmp))
+    #Set region
+    ga("set lat -90 90")
+    ga("set lon -180 180")
 
   #Define the output variables
   ga("tmax0 = max(tmp2m,t=1,t=4)")
@@ -272,7 +330,7 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
   #Set to new region
   ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
   ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
-
+  
   #Regrid to 1/4 degree
   Grads_Regrid("tmax0","tmax0",dims)
   Grads_Regrid("tmin0","tmin0",dims)
@@ -292,15 +350,20 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
 
   #Close access to all files in grads
   ga("close 1")
+  fp.close()
 
   #Remove files from the workspace
-  os.system('rm -f %s/gfsanl_3*' % workspace)
+  os.system('rm -f %s/gfsanl_*' % workspace)
 
+ #Substitute data for missing days
  elif flag_missing == True:
-  file = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date.year,date.month,date.day,dims['res'])
-  date_old = date - relativedelta.relativedelta(years=1)
-  file_old = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date_old.year,date_old.month,date_old.day,dims['res'])
-  os.system("cp %s %s" % (file_old,file))
+   if dset == 'NCDC':
+     date_old = date - relativedelta.relativedelta(days=1)
+   else:
+     date_old = date - relativedelta.relativedelta(years=1)
+   file = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date.year,date.month,date.day,dims['res'])
+   file_old = '%s/GFS_ANL_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anl_root,date_old.year,date_old.month,date_old.day,dims['res'])
+   os.system("cp %s %s" % (file_old,file))
 
  #Update the control file
  ctl_out = '../DATA/GFS_ANL/DAILY/gfsanl_daily_0.25deg.ctl'
@@ -309,6 +372,167 @@ def Download_and_Process_GFS_Analysis(date,dims,Reprocess_Flag):
  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
 
  return
+
+def Download_and_Process_GFS_Analysis_Precip(date,dims,dset,Reprocess_Flag):
+  
+  gfs_anlp_root = '../DATA/GFS_ANLP/DAILY'
+  workspace = '../WORKSPACE'
+  
+  itime = datetime.datetime(2008,1,1)
+  if date < itime:
+    return
+
+  #If the file already exists exit:
+  file = 'GFS_ANLP_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+  netcdf_file = '%s/%s' % (gfs_anlp_root,file)
+  if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
+    return
+ 
+  print_info_to_command_line("Downloading and processing the NCEP GFS analysis precipitation")
+
+  #Download GFS Analysis precip from forecasts for the entire day
+  idate = date 
+  flag_missing = False
+  dt = datetime.timedelta(hours=6)
+
+  if dset == 'NCEP':
+    #Create and open access to netcdf file
+    netcdf_tmp = '../WORKSPACE/gfsanlp_%04d%02d%02d.nc' % (date.year,date.month,date.day)
+    vars = {'PRATEsfc':'pratesfc'}
+    vars_info = ['Surface Precipitation Rate [kg/m2/s]']
+    nt = 4
+    tstep = 'days'
+    dimst = {}
+    dimst['minlat'] = -90.0
+    dimst['minlon'] = 0.0
+    dimst['nlat'] = 181 
+    dimst['nlon'] = 360
+    dimst['res'] = 1.000
+    dimst['maxlat'] = dimst['minlat'] + dimst['res']*(dimst['nlat']-1)
+    dimst['maxlon'] = dimst['minlon'] + dimst['res']*(dimst['nlon']-1)
+   
+    fpt = Create_NETCDF_File(dimst,netcdf_tmp,vars,vars_info,idate,tstep,nt)
+
+    #Loop through timesteps 1 to 4 and open the gds url for each one
+    times = ['00z','06z','12z','18z']
+    for t in xrange(0,4):
+      #Create http url and open
+      http = 'http://nomads.ncep.noaa.gov:80/dods/gfs_0p25/gfs%04d%02d%02d/gfs_0p25_%s' % (date.year,date.month,date.day,times[t])
+      try:
+        ga("sdfopen %s" % http) 
+      except:
+        print "Missing GFS Precip data. Filling in with previous year."
+        flag_missing = True
+        break
+
+      #Extract the 3 variables at each timestep and combine 
+      #Set to new region
+      ga("set lat -90 90") 
+      ga("set lon 0 360") 
+      ga("set lev 1000")
+      ga("set t 2")
+     
+      #Write to file
+      for var in vars:
+        data = np.ma.getdata(ga.exp("re(%s,1.0)" % vars[var]))
+        fpt.variables[var][t] = data
+      #Close access to all files in grads
+      ga("close 1")
+    fpt.close()
+
+  if dset == 'NCDC':
+    for i in xrange(0,4):
+      date2 = date
+    
+      while os.path.exists('../WORKSPACE/gfs_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+        ftp_file = 'ftp://nomads.ncdc.noaa.gov/GFS/Grid3/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.year,date2.month,date2.day,date2.year,date2.month,date2.day,date2.hour)
+        cmd = 'wget -nv -P ../WORKSPACE %s' % ftp_file
+        os.system(cmd)
+    
+        if os.path.exists('../WORKSPACE/gfs_3_%04d%02d%02d_%02d00_000.grb' % (date.year,date.month,date.day,date.hour)) == False:
+          print "Missing GFS analysis data for hour %02d. Filling in with previous time step." % (date.hour)
+          date2 = date2 - dt
+          cmd = 'cp ../WORKSPACE/gfs_3_%04d%02d%02d_%02d00_000.grb ../WORKSPACE/gfs_3_%04d%02d%02d_%02d00_000.grb' % (date2.year,date2.month,date2.day,date2.hour,date.year,date.month,date.day,date.hour)
+          os.system(cmd)
+      
+        if (date - date2).days > 0:
+          print "Missing GFS analysis data for entire day. Filling in with previous day."
+          flag_missing = True 
+          break
+    
+      if flag_missing == True:
+        break
+  
+      date = date + dt
+  
+  if flag_missing == False:
+    if dset == 'NCDC':
+      #Create index and control file for the entire period
+      grb_file = 'gfs_3_%04d%02d%02d_%s00_000.grb'% (idate.year,idate.month,idate.day,'%h2')
+      os.system('perl ../LIBRARIES/grib2ctl.pl %s/%s 1> %s/%s 2> /dev/null' % (workspace,grb_file,workspace,ctl_file))
+
+      #Create index file
+      gribmap = '../LIBRARIES/grads-2.0.1.oga.1/Contents/gribmap'
+      os.system('%s -0 -i %s/%s' % (gribmap,workspace,ctl_file))
+      #Open access to the file
+      ga("open %s/%s" % (workspace,ctl_file))
+
+      #Set region
+      ga("set lat -89.5 89.5")
+      ga("set lon -179.5 179.5")
+    
+    if dset == 'NCEP':
+      #Open access to the file
+      ga("sdfopen %s" % (netcdf_tmp))
+      #Set region
+      ga("set lat -90 90")
+      ga("set lon -180 180")
+
+    #Define the output variables
+    ga("prec0 = 3600*24*ave(PRATEsfc,t=1,t=4)") 
+    
+    #Set to new region
+    ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+    ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+
+    #Regrid to 1/4 degree
+    Grads_Regrid("prec0","prec0",dims)  
+
+    #Create and open access to netcdf file 
+    vars = ['prec']
+    vars_info = ['daily total precip (mm)']
+    nt = 1
+    tstep = 'days'
+    fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,idate,tstep,nt)
+    
+    #Write to file
+    for var in vars:
+      data = np.ma.getdata(ga.exp(var+'0'))
+      fp.variables[var][0] = data
+
+    #Close access to all files in grads
+    ga("close 1")
+    fp.close()
+
+    #Remove files from the workspace
+    os.system('rm -f %s/gfsanl*' % workspace)
+
+  elif flag_missing == True:
+    if dset == 'NCDC':
+      date_old = date - relativedelta.relativedelta(days=1)
+    else:
+      date_old = date - relativedelta.relativedelta(years=1)
+    file = '%s/GFS_ANLP_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anlp_root,date.year,date.month,date.day,dims['res'])
+    file_old = '%s/GFS_ANLP_%04d%02d%02d_daily_%.3fdeg.nc' % (gfs_anlp_root,date_old.year,date_old.month,date_old.day,dims['res'])
+    os.system("cp %s %s" % (file_old,file))
+
+  #Update the control file
+  ctl_out = '../DATA/GFS_ANLP/DAILY/gfsanlp_daily_0.25deg.ctl'
+  nt = (date - itime).days + 1
+  file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('GFS_ANLP','%y4','%m2','%d2')
+  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+  return
 
 def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
 
@@ -436,8 +660,9 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
  print_info_to_command_line("Downloading and processing the gfs 7-day forecast")
 
  #Establish connection to 00 forecast
- gds_file = 'http://nomads.ncdc.noaa.gov:80/dods/NCEP_GFS/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_0000_fff' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day)
- gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs/gfs%04d%02d%02d/gfs_00z' % (date.year,date.month,date.day)
+ #gds_file = 'http://nomads.ncdc.noaa.gov:80/dods/NCEP_GFS/%04d%02d/%04d%02d%02d/gfs_3_%04d%02d%02d_0000_fff' % (date.year,date.month,date.year,date.month,date.day,date.year,date.month,date.day)
+ #gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs/gfs%04d%02d%02d/gfs_00z' % (date.year,date.month,date.day)
+ gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs_0p25/gfs%04d%02d%02d/gfs_0p25_00z' % (date.year,date.month,date.day)
  
  #gds_file = 'http://nomads.ncep.noaa.gov:9090/dods/gfs_hd/gfs_hd%04d%02d%02d/gfs_hd_00z' % (date.year,date.month,date.day)
  try:
@@ -461,15 +686,27 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
    continue
  
   #Set region
-  ga("set lat -89.5 89.5")
-  ga("set lon -179.5 179.5")
+  #ga("set lat -89.5 89.5")
+  #ga("set lon -179.5 179.5")
+  ga("set lat -90 90")
+  ga("set lon -180 180")
+  ga("set lev 1000")
 
   #Define the output variables
-  ga("tmax0 = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
-  ga("tmin0 = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
+  #ga("tmax0 = max(TMAX2m,t=%d,t=%d)" % (t1,t2))
+  #ga("tmin0 = min(TMIN2m,t=%d,t=%d)" % (t1,t2))
   #ga("prec = 3600*24*ave(oprate,t=%d,t=%d)" % (t1,t2))
-  ga("prec0 = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
-  ga("wind0 = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
+  #ga("prec0 = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
+  #ga("wind0 = pow(pow(ave(UGRD10m,t=%d,t=%d),2) + pow(ave(VGRD10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
+  ga("data = max(tmax2m,t=%d,t=%d)" % (t1,t2))
+  ga("tmax0 = re(data,1.0)")
+  ga("data = min(tmin2m,t=%d,t=%d)" % (t1,t2))
+  ga("tmin0 = re(data,1.0)")
+  #ga("prec0 = 3600*24*ave(oprate,t=%d,t=%d)" % (t1,t2))
+  ga("data = 3600*24*ave(pratesfc,t=%d,t=%d)" % (t1,t2))
+  ga("prec0 = re(data,1.0)")
+  ga("data = pow(pow(ave(ugrd10m,t=%d,t=%d),2) + pow(ave(vgrd10m,t=%d,t=%d),2),0.5)" % (t1,t2,t1,t2))
+  ga("wind0 = re(data,1.0)")
 
   #Set to new region
   ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
@@ -505,6 +742,139 @@ def Download_and_Process_GFS_forecast(date,dims,Reprocess_Flag):
 
  #Close access to all files in grads
  ga("close 1")
+
+ return
+
+def Download_and_Process_SMAP(date,dims,Reprocess_Flag):
+  
+  #If the date is before the product's start date:
+  itime = datetime.datetime(2015,4,1)
+  if date < itime:
+   return
+
+  print_info_to_command_line("Downloading and Processing SMAP Soil Moisture product")
+
+  file_loc = "/home/stream3/hires/smap/ctl/ops/SMAP_L3_SM_P_20150331.ctl"
+  smap_root = '../DATA/SMAP_SM/DAILY'
+  
+  #If the file already exists exit:
+  file = 'SMAP_SM_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+  netcdf_file = '%s/%s' % (smap_root,file)
+  if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
+   return
+ 
+  grads_exe_tmp = '/home/stream3/hires/local/opengrads-2.0.1.oga.1.princeton/opengrads'
+  ga = grads.GrADS(Bin=grads_exe_tmp,Window=False,Echo=False)
+
+  ga('open %s' % file_loc)
+
+  #Set region
+  ga("set lat -90 90")
+  ga("set lon 0 360")
+  ga("set time %s" % datetime2gradstime(date))
+
+  #Set to new region
+  ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+  #print "set lat %f %f" % (dims['minlat'],dims['maxlat'])
+  #print "set lon %f %f" % (dims['minlon'],dims['maxlon'])
+  #Regrid to 1/4 degree
+  Grads_Regrid_gzip("soilm","data",dims,ga)
+ 
+  #Create and open access to netcdf file
+  vars = ['soilm']
+  vars_info = ['daily soil moisture']
+  nt = 1
+  tstep = 'days'
+  fp = Create_NETCDF_File(dims,netcdf_file,vars,vars_info,date,tstep,nt)
+
+  #Write to file
+  for var in vars:
+   data = np.ma.getdata(ga.exp("data"))
+   data[data<0] = np.NaN
+   #print data
+   fp.variables[var][0] = data
+
+  #Close access to all files in grads
+  ga("close 1")
+  fp.close()
+  #raw_input('')
+  
+  #Update the control file
+  ctl_out = '../DATA/SMAP_SM/DAILY/SMAP_SM_daily_0.25deg.ctl'
+  nt = (date - itime).days + 1
+  file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('SMAP_SM','%y4','%m2','%d2')
+  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+  
+  grads_exe = '../LIBRARIES/grads-2.0.1.oga.1/Contents/grads'
+  ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
+
+  return
+
+def Compute_SMAP_moving_average(date,dims,Reprocess_Flag):
+
+ dt_array = [datetime.timedelta(days=3)]
+ root = '../DATA/SMAP_SM_MA/DAILY'
+ netcdf_file = 'SMAP_SM_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+ file = '%s/%s' % (root,netcdf_file)
+ file_org = "../DATA/SMAP_SM/DAILY/%s" % netcdf_file
+ if os.path.exists(file_org) == False and Reprocess_Flag == False:
+  return
+
+ #If the date is before the product's start date:
+ itime = datetime.datetime(2015,4,1)
+ if date < itime:
+  return
+
+ #Update the control file
+ ctl_out = '../DATA/SMAP_SM_MA/DAILY/SMAP_SM_daily_0.25deg.ctl'
+ nt = (date - itime).days + 1
+ file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('SMAP_SM','%y4','%m2','%d2')
+ Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+ #If the file exists then exit (unless we are reprocessing the data)
+ if os.path.exists(netcdf_file) == True and Reprocess_Flag == False:
+  return
+
+ #If file exists exit
+ if os.path.exists(file) == True and Reprocess_Flag == False:
+  return
+
+ print_info_to_command_line("Computing the SMAP SM product n-day moving averages")
+
+ #Open access to the NDVI
+ ctl_file = "../DATA/SMAP_SM/DAILY/SMAP_SM_daily_0.25deg.ctl"
+
+ #Open access to files
+ ga("xdfopen %s" % ctl_file)
+
+ #Create file
+ nt = 1
+ file = '%s/%s' % (root,netcdf_file)
+ vars = []
+ vars_info = []
+ for dt in dt_array:
+  vars.append('soilm')
+  vars_info.append('SMAP SM %d moving window' % dt.days)
+ tstep = 'days'
+ fp = Create_NETCDF_File(dims,file,vars,vars_info,date,tstep,nt)
+
+ #Compute averages for all the moving averages
+ for dt in dt_array:
+  var = 'soilm'
+  #Compute the average between the two intervals
+  time1 = datetime2gradstime(date - dt/2)
+  time2 = datetime2gradstime(date + dt/2)
+  ga("data = ave(soilm,time=%s,time=%s)" % (time1,time2))
+
+  #Add data to file
+  fp.variables[var][0] = np.ma.getdata(ga.exp("data"))
+
+ #Close access to grads file
+ ga("close 1")
+
+ #Close access to new file
+ fp.close()
 
  return
 
@@ -916,7 +1286,8 @@ def BiasCorrect_and_Output_Forcing_GFS_Daily(date,dims,Reprocess_Flag):
  ga('reinit')
 
  #If the date is before the product's start date:
- if date < datetime.datetime(2012,8,14):
+ #if date < datetime.datetime(2012,8,14):
+ if date < datetime.datetime(2015,2,15):
   return
 
  print_info_to_command_line("Bias-correcting the gfs 7-day forecast")
