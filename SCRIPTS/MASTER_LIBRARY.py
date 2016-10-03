@@ -555,40 +555,72 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  print_info_to_command_line("Downloading and processing the 3b42RT product")
 
  #Download date of TMPA 3b42rt product
+ #for i in xrange(0,9):
+ # ftp_root = 'ftp://disc2.nascom.nasa.gov/data/TRMM/Gridded/3B42RT/%04d%02d' % (date.year,date.month)
+ # #ftp_root = 'ftp://trmmopen.gsfc.nasa.gov/pub/merged/mergeIRMicro/%04d' % date.year
+ # file = "3B42RT.%04d.%02d.%02d.%02dz.bin" % (date.year,date.month,date.day,date.hour)
+ # ftp_file = '%s/%s' % (ftp_root,file)
+ # print ftp_file
+ # dwncmd = 'wget -nv -P %s %s' % (workspace,ftp_file)
+ # #if os.path.isfile('%s/%s' % (workspace,file)) == False:
+ # os.system(dwncmd)
+ # date = date + dt
+
  for i in xrange(0,9):
-  ftp_root = 'ftp://disc2.nascom.nasa.gov/data/TRMM/Gridded/3B42RT/%04d%02d' % (date.year,date.month)
-  #ftp_root = 'ftp://trmmopen.gsfc.nasa.gov/pub/merged/mergeIRMicro/%04d' % date.year
-  file = "3B42RT.%04d.%02d.%02d.%02dz.bin" % (date.year,date.month,date.day,date.hour)
-  ftp_file = '%s/%s' % (ftp_root,file)
-  print ftp_file
-  dwncmd = 'wget -nv -P %s %s' % (workspace,ftp_file)
-  #if os.path.isfile('%s/%s' % (workspace,file)) == False:
-  os.system(dwncmd)
-  date = date + dt
+   ftp_root = 'ftp://trmmopen.pps.eosdis.nasa.gov/pub/merged/3B42RT/%04d/' % (date.year)
+   file = "3B42RT.%04d%02d%02d%02d.7.bin.gz" % (date.year,date.month,date.day,date.hour)
+   ftp_file = '%s/%s' % (ftp_root,file)
+   print ftp_file
+   os.system('wget -nv -P %s %s' % (workspace,ftp_file))
+   os.system('gunzip %s/%s' % (workspace,ftp_file))
+   date = date + dt
 
  #Determine if file exists, if not return
- tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
+ #tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
+ tmp_file = '%s/3B42RT.%04d%02d%02d%02.7.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
  print tmp_file
  if os.path.exists(tmp_file) == False:
   print "3B42RT files cannot be retrieved"
   return
 
  #Construct the control file
+ #ctl_file = '3B42RT.%04d.%02d.%02d.ctl' % (idate.year,idate.month,idate.day)
+ #f = open('%s/%s' % (workspace,ctl_file), 'w')
+ #f.write('dset ^3B42RT.%y4.%m2.%d2.%h2z.bin\n')
+ #f.write('options template byteswapped\n')
+ #f.write('title Real-Time Three Hourly TRMM and Other Satellite Rainfall (3B42RT)\n')
+ #f.write('undef -99999.0\n')
+ #f.write('xdef 1440 linear 0.1250 0.25\n')
+ #f.write('ydef 480  linear -59.8750 0.25\n')
+ #f.write('zdef 1 levels 10000\n')
+ #f.write('tdef 9 linear 00Z%02d%s%04d 3hr\n' % (idate.day,idate.strftime('%b'),idate.year))
+ #f.write('vars 1\n')
+ #f.write('p 0 99 Precipitation (mm/hr)\n')
+ #f.write('endvars\n')
+ #f.close()
+
  ctl_file = '3B42RT.%04d.%02d.%02d.ctl' % (idate.year,idate.month,idate.day)
  f = open('%s/%s' % (workspace,ctl_file), 'w')
- f.write('dset ^3B42RT.%y4.%m2.%d2.%h2z.bin\n')
- f.write('options template byteswapped\n')
+ f.write('dset ^3B42RT.%y4%m2%d2%h2.7.bin\n')
+ f.write('options template big_endian yrev\n')
  f.write('title Real-Time Three Hourly TRMM and Other Satellite Rainfall (3B42RT)\n')
- f.write('undef -99999.0\n')
+ f.write('headerbytes 2880')
+ f.write('undef -31999\n')
  f.write('xdef 1440 linear 0.1250 0.25\n')
  f.write('ydef 480  linear -59.8750 0.25\n')
- f.write('zdef 1 levels 10000\n')
+ f.write('zdef 1 levels 1\n')
  f.write('tdef 9 linear 00Z%02d%s%04d 3hr\n' % (idate.day,idate.strftime('%b'),idate.year))
- f.write('vars 1\n')
- f.write('p 0 99 Precipitation (mm/hr)\n')
+ f.write('vars 3\n')
+ f.write('p      0 -1,40,2,-1 Precipitation (mm/hr)\n')
+ f.write('perror 0 -1,40,2,-1 Precipitation Error (mm/hr)\n')
+ f.write('source 0 -1,40,2,-1 Source Number (mm/hr)\n')
  f.write('endvars\n')
  f.close()
 
+ #Change grads to Ming's version for the 2byte integers
+ grads_exe_tmp = '/home/stream3/hires/local/opengrads-2.0.1.oga.1.princeton/opengrads'
+ ga = grads.GrADS(Bin=grads_exe_tmp,Window=False,Echo=False)
+ 
  #Open access to the file
  ga("open %s/%s" % (workspace,ctl_file))
 
@@ -597,7 +629,8 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  ga("set lon -179.875 179.875")
 
  #Define the output variables
- ga("tmp = 1.5*p(t=1) + 1.5*p(t=9) + 3*sum(p,t=2,t=8)") #mm/day
+ #ga("tmp = 1.5*p(t=1) + 1.5*p(t=9) + 3*sum(p,t=2,t=8)") #mm/day
+ ga("tmp = 1.5*p(t=1)/100 + 1.5*p(t=9)/100 + 3*sum(p/100,t=2,t=8)") #mm/day
  ga("prec0 = const(maskout(tmp,tmp),-9.99e+08,-u)")
 
  #Set to new region
@@ -2115,6 +2148,104 @@ def Download_and_Process_Seasonal_Forecast(date,Reprocess_Flag):
 
  return
 
+def Download_and_Process_NMME2_Seasonal_Forecast_Products(date,dims,Reprocess_Flag):
+ 
+ out_dir = '../DATA/SEASONAL_FORECAST/%04d%02d' % (date.year,date.month)
+
+ if date < datetime.datetime(2016,7,1):
+   return
+
+ if date.day < 15:
+   return
+
+ print_info_to_command_line("Downloading the NMME2 monthly seasonal forecast")
+
+ #Define the models
+ models = ('CanCM3','CanCM4')
+ vars = ['prec','flw','baseflow','vc2','vc1','flwanomaly','baseflowanomaly','vc2anomaly','vc1anomaly']
+ vars_info = ['prec','flw','baseflow','vc2','vc1','flwAnomaly','baseflowAnomaly','vc2Anomaly','vc1Anomaly']
+
+ for model in models:
+
+   in_file = '/home/stream3/nwanders/subSeasonal/monitor/DATA/NMME2-%s_%s_monthly.nc' % (model,date.strftime('%Y%m'))
+   in_ctl = '/home/stream3/nwanders/subSeasonal/monitor/CTL/NMME2-%s.ctl' % (model)
+   out_file = '%s/NMME2-%s_%s_monthly.nc' % (out_dir,model,date.strftime('%Y%m'))
+
+   #Check if the actual file exists 
+   if os.path.exists(in_file) == False:
+     print "Could not download NMME2 %s forecast" % (model)
+     continue
+   
+   else:
+    if os.path.exists(out_file) == True and Reprocess_Flag == False:
+     continue
+    try:
+     ga('open %s' % in_ctl)
+    except:
+     print "Could not open NMME2 %s forecast" % (model)
+     continue
+
+    #Create output file for model
+    nt = 6
+    tstep = 'months'
+    fp = Create_NETCDF_File(dims,out_file,vars,vars_info,date,tstep,nt)
+
+    #Set region
+    ga("set lat -90 90")
+    ga("set lon 0 360")
+
+    for t in range(1,7):
+      ga("set lat -90 90")
+      ga("set lon 0 360")
+      ga("set t %d" % t)
+      ga("set lat %f %f" % (dims['minlat'],dims['maxlat']))
+      ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
+       
+      for var in vars:
+        Grads_Regrid(var,"data",dims)
+        data = np.ma.getdata(ga.exp("data"))
+        data[data == 1e+20] = np.NaN
+        fp.variables[var][t-1] = data
+  
+   ga("close 1")
+   fp.close()
+
+   #Update the CTL file
+   idate = datetime.datetime(2016,7,1) 
+   fdate = date
+   rd = relativedelta.relativedelta(fdate,idate)
+   nmonths = 12*rd.years + rd.months + 1
+   ctl = '../DATA/SEASONAL_FORECAST/CTL/NMME2-%s.ctl' % model
+   fp = open(ctl,'w')
+   fp.write('dset ^../%s/NMME2-%s_%s_monthly.nc\n' % ('%e',model,'%e'))
+   fp.write('options template\n')
+   fp.write('dtype netcdf\n')
+   fp.write('title Seasonal Forecast %s\n' % model)
+   fp.write('undef -9.99e+08\n')
+   fp.write('xdef %d  linear %f %f\n' % (dims['nlon'],dims['minlon'],dims['res']))
+   fp.write('ydef %d  linear %f %f\n' % (dims['nlat'],dims['minlat'],dims['res']))
+   fp.write('tdef %d linear 00Z01%s%d 1mo\n' % (nmonths+5,idate.strftime('%b'),idate.year))
+   fp.write('zdef 1 linear 1 1\n')
+   fp.write('edef %d\n' % nmonths)
+   date_tmp = idate
+   while date_tmp <= fdate:
+     fp.write('%04d%02d 6 00Z01%s%d 1mo\n' % (date_tmp.year,date_tmp.month,date_tmp.strftime('%b'),date_tmp.year))
+     date_tmp = date_tmp + relativedelta.relativedelta(months=1)
+   fp.write('endedef\n')
+   fp.write('vars 9\n')
+   fp.write('prec 1 t,y,x data\n')
+   fp.write('flw 1 t,y,x data\n')
+   fp.write('baseflow 1 t,y,x data\n')
+   fp.write('vc2 1 t,y,x data\n')
+   fp.write('vc1 1 t,y,x data\n')
+   fp.write('flwanomaly 1 t,y,x data\n')
+   fp.write('baseflowanomaly 1 t,y,x data\n') 
+   fp.write('vc2anomaly 1 t,y,x data\n') 
+   fp.write('vc1anomaly 1 t,y,x data\n') 
+   fp.write('endvars\n')
+   fp.close()
+
+
 def BiasCorrect_and_Compute_Seasonal_Forecast_Products(date,dims,Reprocess_Flag):
 
  models = {'CMC1-CanCM3':10,'CMC2-CanCM4':10,'COLA-RSMAS-CCSM3':6,'GFDL-CM2p1-aer04':10,'NASA-GMAO-062012':11,'NCEP-CFSv2':24}
@@ -2913,10 +3044,11 @@ def Finalize_GFS_forecast(idate,dims):
   ctl_routing = '../DATA/GFS_DERIVED/%04d%02d%02d/Streamflow.ctl' % (idate.year,idate.month,idate.day)
   ctl_forcing = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (t+1)
   ctl_spi = '../DATA/GFS_DERIVED/%04d%02d%02d/spi_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+  ctl_eto = '../DATA/GFS_DERIVED/%04d%02d%02d/eto_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
   ctl_routing_derived = '../DATA/GFS_DERIVED/%04d%02d%02d/routing_vic_derived_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
  
   #Create dictionary of ctl info
-  ctl_info = {ctl_vic:'open',ctl_vic_derived:'xdfopen',ctl_routing:'open',ctl_forcing:'xdfopen',ctl_spi:'xdfopen',ctl_routing_derived:'xdfopen'}
+  ctl_info = {ctl_vic:'open',ctl_vic_derived:'xdfopen',ctl_routing:'open',ctl_forcing:'xdfopen',ctl_spi:'xdfopen',ctl_eto:'xdfopen',ctl_routing_derived:'xdfopen'}
 
   #Iterate through all data files extracting the desired data
   for ctl in ctl_info:
@@ -2995,3 +3127,105 @@ def Finalize_GFS_forecast(idate,dims):
  fp.close()
 
  return
+
+def Calc_ETo(date,dims,dataset,idate,Reprocess_Flag):
+  #Read in all data from the correct files
+  #rnet - W/m2
+  #prec - mm/day
+  #tmax - K
+  #tmin - K
+  #wind - m/s
+
+  #print date
+  #ga = grads.GrADS(Bin=grads_exe,Window=False,Echo=False)
+
+  idate_tstep = date
+  fdate_tstep = date
+  dt_up = relativedelta.relativedelta(days=0)
+  dt_down = relativedelta.relativedelta(days=0)
+  dt = datetime.timedelta(days=1) 
+  type = 'all'
+  
+  mask_file = '../DATA/MISCELLANOUS/mask_Africa_0.25deg.nc'
+  ga("sdfopen %s" % mask_file)
+  ga('set t 1')
+  mask = np.ma.getdata(ga.exp("maskout(%s,%s)" % ("mask","mask")))
+  mask[mask<0] = np.nan
+  ga("close 1")
+
+  if dataset == 'forecast':
+    day = (date - idate).days + 1
+
+    vic_file = '../DATA/GFS_DERIVED/%04d%02d%02d/output_grid_%04d%02d%02d00.ctl' % (idate.year,idate.month,idate.day,idate.year,idate.month,idate.day)
+    forcing_file = '../DATA/GFS_BC/gfs_daily_0.250deg_day%d.ctl' % (day)
+    r_net = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,vic_file,"r_net",type,"open"))
+    tmin = np.squeeze(Extract_Data_Period_Average(idate,idate,dt_down,dt_up,dt,forcing_file,"tmin",type,"xdfopen"))
+    tmax = np.squeeze(Extract_Data_Period_Average(idate,idate,dt_down,dt_up,dt,forcing_file,"tmax",type,"xdfopen"))
+    wind = np.squeeze(Extract_Data_Period_Average(idate,idate,dt_down,dt_up,dt,forcing_file,"wind",type,"xdfopen"))
+  elif date < datetime.datetime(2009,1,1):
+    vic_file = '../DATA/VIC_PGF/DAILY/vic_daily_0.25deg.ctl'
+    forcing_file = '../DATA/PGF/DAILY/pgf_daily_0.25deg.ctl'
+    r_net = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,vic_file,"r_net",type,"open"))
+    tmin = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"tmin",type,"xdfopen"))
+    tmax = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"tmax",type,"xdfopen"))
+    wind = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"wind",type,"xdfopen"))
+  else:
+    vic_file = '../DATA/VIC_3B42RT/DAILY/vic_daily_0.25deg.ctl'
+    forcing_file = '../DATA/GFS_ANL_BC/DAILY/gfsanl_daily_0.25deg.ctl'
+    r_net = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,vic_file,"r_net",type,"open"))
+    tmin = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"tmin",type,"xdfopen"))
+    tmax = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"tmax",type,"xdfopen"))
+    wind = np.squeeze(Extract_Data_Period_Average(idate_tstep,fdate_tstep,dt_down,dt_up,dt,forcing_file,"wind",type,"xdfopen"))
+  
+  #Daily avg temp (C)
+  tavg = (tmax+tmin)/2 - 273.15
+  #Sat  and actual vap pressure (kPa)
+  es = 0.6108*np.exp(np.divide(17.27*tavg,237.3+(tavg)))
+  ea = 0.6108*np.exp(np.divide(17.27*(tmin-273.15),237.3+(tmin-273.15)))
+  #VPD 
+  D = es - ea
+  #Delta (kPa/C)
+  delta = 4098*np.divide(es,np.power(237.3+tavg,2))
+  #Psychrometric Const
+  z1=20; #Set the elevation above the sea level as 20m
+  P=101.3*((293-0.0065*z1)/293)**5.26;
+  g=0.0010013*P/(0.622*2.45);
+  
+  Eto1 = np.multiply(np.divide(delta,delta+g*(1+0.33*wind)),r_net*0.0864)
+  Eto2 = np.multiply(np.multiply(np.divide(delta,delta+g*(1+0.33*wind)),np.divide(900,tavg+275)),np.multiply(D,wind))
+  Eto = np.squeeze(Eto1 + Eto2)
+  Eto[Eto<0] = 0
+  
+  #Output the data
+  if dataset == 'monitor':
+    itime = datetime.datetime(1950,1,1)
+    file_out = '../DATA/ETO/DAILY/ETo_%04d%02d%02d_daily_%.3fdeg.nc' % (date.year,date.month,date.day,dims['res'])
+    ctl_out = '../DATA/ETO/DAILY/ETo_daily_0.25deg.ctl'
+  elif dataset == 'forecast':
+    itime = idate
+    file_out = '../DATA/GFS_DERIVED/%04d%02d%02d/ETo_%04d%02d%02d_daily_%.3fdeg.nc' % (idate.year,idate.month,idate.day,date.year,date.month,date.day,dims['res'])
+    ctl_out = '../DATA/GFS_DERIVED/%04d%02d%02d/eto_daily_0.25deg.ctl' % (idate.year,idate.month,idate.day)
+
+  #Update the control file
+  nt = (date - itime).days + 1
+  file_template = '^%s_%s%s%s_daily_0.250deg.nc' % ('ETo','%y4','%m2','%d2')
+  Update_Control_File('nc',itime,dims,nt,'1dy',file_template,ctl_out)
+
+  #If the product for today exists then exit
+  if os.path.exists(file_out) == True and Reprocess_Flag == False:
+    return
+ 
+  #Output data
+  nt = 1
+  tstep = 'days'
+  vars = ['ETo']
+  vars_info = ['Reference ET']
+  #Create file
+  fp = Create_NETCDF_File(dims,file_out,vars,vars_info,date,tstep,nt)
+  #Write to file
+  fp.variables['ETo'][0] = Eto
+  #Close file
+  fp.close()
+ 
+  return
+
