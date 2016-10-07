@@ -567,17 +567,17 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  # date = date + dt
 
  for i in xrange(0,9):
-   ftp_root = 'ftp://trmmopen.pps.eosdis.nasa.gov/pub/merged/3B42RT/%04d/' % (date.year)
+   ftp_root = 'ftp://trmmopen.pps.eosdis.nasa.gov/pub/merged/3B42RT/%04d' % (date.year)
    file = "3B42RT.%04d%02d%02d%02d.7.bin.gz" % (date.year,date.month,date.day,date.hour)
    ftp_file = '%s/%s' % (ftp_root,file)
    print ftp_file
    os.system('wget -nv -P %s %s' % (workspace,ftp_file))
-   os.system('gunzip %s/%s' % (workspace,ftp_file))
+   os.system('gunzip %s/%s' % (workspace,file))
    date = date + dt
 
  #Determine if file exists, if not return
  #tmp_file = '%s/3B42RT.%04d.%02d.%02d.%02dz.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
- tmp_file = '%s/3B42RT.%04d%02d%02d%02.7.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
+ tmp_file = '%s/3B42RT.%04d%02d%02d%02d.7.bin' % (workspace,idate.year,idate.month,idate.day,idate.hour)
  print tmp_file
  if os.path.exists(tmp_file) == False:
   print "3B42RT files cannot be retrieved"
@@ -604,7 +604,7 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  f.write('dset ^3B42RT.%y4%m2%d2%h2.7.bin\n')
  f.write('options template big_endian yrev\n')
  f.write('title Real-Time Three Hourly TRMM and Other Satellite Rainfall (3B42RT)\n')
- f.write('headerbytes 2880')
+ f.write('headerbytes 2880\n')
  f.write('undef -31999\n')
  f.write('xdef 1440 linear 0.1250 0.25\n')
  f.write('ydef 480  linear -59.8750 0.25\n')
@@ -638,7 +638,8 @@ def Download_and_Process_3b42RT(date,dims,Reprocess_Flag):
  ga("set lon %f %f" % (dims['minlon'],dims['maxlon']))
 
  #Regrid to 1/4 degree
- Grads_Regrid("prec0","prec0",dims)
+ #Grads_Regrid("prec0","prec0",dims)
+ ga("%s = re(%s,%d,linear,%f,%f,%d,linear,%f,%f)" % ('prec0','prec0',dims['nlon'],dims['minlon'],dims['res'],dims['nlat'],dims['minlat'],dims['res']))
 
  #Create and open access to netcdf file
  vars = ['prec']
