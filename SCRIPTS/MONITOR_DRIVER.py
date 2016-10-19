@@ -30,6 +30,7 @@ dataset_info = {
         'SPI':{'ctl':"../DATA/SPI/DAILY/spi_daily_0.25deg.ctl",'type':"xdfopen"},
         'SMAP_SM':{'ctl':"../DATA/SMAP_SM/DAILY/SMAP_SM_daily_0.25deg.ctl",'type':"xdfopen"},
         'SMAP_SM_MA':{'ctl':"../DATA/SMAP_SM_MA/DAILY/SMAP_SM_daily_0.25deg.ctl",'type':"xdfopen"},
+        'ETO':{'ctl':"../DATA/ETO/DAILY/ETo_daily_0.25deg.ctl",'type':"xdfopen"},
         }
 
 def Download_and_Process(date):
@@ -121,6 +122,8 @@ def Compute_Indices(date):
 
  ml.Calculate_and_Output_Streamflow_Percentiles(date,dims,Reprocess_Flag,'monitor',date)
 
+ ml.Calc_ETo(date,dims,'monitor',date,Reprocess_Flag)
+ 
  return
 
 def Compute_Forecast_Indices(date,idate):
@@ -135,6 +138,8 @@ def Compute_Forecast_Indices(date,idate):
 
  ml.Calculate_and_Output_SPI(date,dims,'forecast',idate,Reprocess_Flag)
  
+ ml.Calc_ETo(date,dims,'forecast',idate,Reprocess_Flag)
+
  #ml.BiasCorrect_and_Compute_Seasonal_Forecast_Products(idate,dims,False)
 
  return
@@ -199,8 +204,8 @@ while date <= fdate:
  date = date + dt
 
 #Run VIC
-#idate_model = datetime.datetime(fdate.year,fdate.month,1)
-idate_model = datetime.datetime(fdate.year,1,1)
+idate_model = datetime.datetime(fdate.year,fdate.month,1)
+#idate_model = datetime.datetime(fdate.year,1,1)
 ml.Run_VIC(idate_model,fdate,dims,'3b42rt',False)
 #ml.Run_VIC(idate,fdate,dims,'pgf')
 ml.Run_VIC(idate_model,fdate,dims,'gfs_forecast',False)
